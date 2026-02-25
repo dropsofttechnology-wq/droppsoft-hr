@@ -1,0 +1,46 @@
+.reports-page {
+  padding: 2rem;
+}
+
+.reports-filters {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.reports-help {
+  margin-top: 2rem;
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.reports-help h2 {
+  margin: 0 0 1rem 0;
+  color: #1e293b;
+}
+
+.reports-help ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #475569;
+}
+
+.reports-help li {
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .reports-page {
+    padding: 1rem;
+  }
+
+  .reports-filters {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+

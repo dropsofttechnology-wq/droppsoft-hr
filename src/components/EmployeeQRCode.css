@@ -1,0 +1,110 @@
+.qr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.qr-modal-content {
+  background: white;
+  border-radius: 0.5rem;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.2);
+}
+
+.qr-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.qr-modal-header h2 {
+  margin: 0;
+  color: #1e293b;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #64748b;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  color: #1e293b;
+}
+
+.qr-modal-body {
+  padding: 2rem;
+  text-align: center;
+}
+
+.employee-info {
+  margin-bottom: 2rem;
+}
+
+.employee-info h3 {
+  margin: 0 0 0.5rem 0;
+  color: #1e293b;
+}
+
+.employee-info p {
+  margin: 0.25rem 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.qr-code-container {
+  margin: 2rem 0;
+}
+
+.qr-code-image {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.25rem;
+  padding: 1rem;
+  background: white;
+}
+
+.qr-instruction {
+  margin-top: 1rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.qr-loading,
+.qr-error {
+  padding: 2rem;
+  color: #64748b;
+}
+
+.qr-error {
+  color: #ef4444;
+}
+
+.qr-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}

@@ -1,0 +1,167 @@
+{
+  "collections": [
+    {
+      "collectionId": "companies",
+      "name": "Companies",
+      "attributes": [
+        { "key": "name", "type": "string", "size": 255, "required": true },
+        { "key": "registration_number", "type": "string", "size": 100, "required": false },
+        { "key": "tax_pin", "type": "string", "size": 50, "required": false },
+        { "key": "address", "type": "string", "size": 500, "required": false },
+        { "key": "phone", "type": "string", "size": 50, "required": false },
+        { "key": "email", "type": "string", "size": 255, "required": false },
+        { "key": "logo_url", "type": "string", "size": 500, "required": false },
+        { "key": "status", "type": "string", "size": 50, "required": true, "default": "active" },
+        { "key": "created_at", "type": "datetime", "required": true },
+        { "key": "updated_at", "type": "datetime", "required": true }
+      ],
+      "indexes": [
+        { "key": "status", "type": "key" }
+      ]
+    },
+    {
+      "collectionId": "employees",
+      "name": "Employees",
+      "attributes": [
+        { "key": "user_id", "type": "string", "size": 255, "required": false },
+        { "key": "company_id", "type": "string", "size": 255, "required": true },
+        { "key": "employee_id", "type": "string", "size": 100, "required": false },
+        { "key": "staff_no", "type": "string", "size": 100, "required": false },
+        { "key": "name", "type": "string", "size": 255, "required": true },
+        { "key": "id_number", "type": "string", "size": 50, "required": false },
+        { "key": "kra_pin", "type": "string", "size": 50, "required": false },
+        { "key": "nssf_number", "type": "string", "size": 50, "required": false },
+        { "key": "shif_number", "type": "string", "size": 50, "required": false },
+        { "key": "department", "type": "string", "size": 100, "required": false },
+        { "key": "position", "type": "string", "size": 100, "required": false },
+        { "key": "basic_salary", "type": "double", "required": true },
+        { "key": "phone", "type": "string", "size": 50, "required": false },
+        { "key": "email", "type": "string", "size": 255, "required": false },
+        { "key": "bank_account", "type": "string", "size": 100, "required": false },
+        { "key": "bank_name", "type": "string", "size": 100, "required": false },
+        { "key": "bank_branch", "type": "string", "size": 100, "required": false },
+        { "key": "contract_start_date", "type": "datetime", "required": false },
+        { "key": "contract_end_date", "type": "datetime", "required": false },
+        { "key": "status", "type": "string", "size": 50, "required": true, "default": "active" },
+        { "key": "created_at", "type": "datetime", "required": true },
+        { "key": "updated_at", "type": "datetime", "required": true }
+      ],
+      "indexes": [
+        { "key": "company_id", "type": "key" },
+        { "key": "user_id", "type": "key" },
+        { "key": "status", "type": "key" }
+      ]
+    },
+    {
+      "collectionId": "attendance",
+      "name": "Attendance",
+      "attributes": [
+        { "key": "user_id", "type": "string", "size": 255, "required": true },
+        { "key": "company_id", "type": "string", "size": 255, "required": true },
+        { "key": "date", "type": "string", "size": 10, "required": true },
+        { "key": "clock_in_time", "type": "datetime", "required": false },
+        { "key": "clock_out_time", "type": "datetime", "required": false },
+        { "key": "hours_worked", "type": "double", "required": false },
+        { "key": "overtime_hours", "type": "double", "required": false },
+        { "key": "auth_method", "type": "string", "size": 50, "required": false },
+        { "key": "location_lat", "type": "double", "required": false },
+        { "key": "location_lng", "type": "double", "required": false },
+        { "key": "location_address", "type": "string", "size": 500, "required": false },
+        { "key": "reason", "type": "string", "size": 500, "required": false },
+        { "key": "created_at", "type": "datetime", "required": true },
+        { "key": "updated_at", "type": "datetime", "required": true }
+      ],
+      "indexes": [
+        { "key": "user_id", "type": "key" },
+        { "key": "company_id", "type": "key" },
+        { "key": "date", "type": "key" }
+      ]
+    },
+    {
+      "collectionId": "payroll_runs",
+      "name": "Payroll Runs",
+      "attributes": [
+        { "key": "company_id", "type": "string", "size": 255, "required": true },
+        { "key": "employee_id", "type": "string", "size": 255, "required": true },
+        { "key": "period", "type": "string", "size": 7, "required": true },
+        { "key": "basic_salary", "type": "double", "required": true },
+        { "key": "allowances", "type": "double", "required": false },
+        { "key": "gross_pay", "type": "double", "required": true },
+        { "key": "shif_employee", "type": "double", "required": false },
+        { "key": "shif_employer", "type": "double", "required": false },
+        { "key": "nssf_employee", "type": "double", "required": false },
+        { "key": "nssf_employer", "type": "double", "required": false },
+        { "key": "ahl_employee", "type": "double", "required": false },
+        { "key": "ahl_employer", "type": "double", "required": false },
+        { "key": "taxable_pay", "type": "double", "required": false },
+        { "key": "paye", "type": "double", "required": false },
+        { "key": "other_deductions", "type": "double", "required": false },
+        { "key": "net_pay", "type": "double", "required": true },
+        { "key": "overtime_hours", "type": "double", "required": false },
+        { "key": "overtime_pay", "type": "double", "required": false },
+        { "key": "holiday_pay", "type": "double", "required": false },
+        { "key": "absence_deduction", "type": "double", "required": false },
+        { "key": "calculated_at", "type": "datetime", "required": true },
+        { "key": "created_at", "type": "datetime", "required": true }
+      ],
+      "indexes": [
+        { "key": "company_id", "type": "key" },
+        { "key": "employee_id", "type": "key" },
+        { "key": "period", "type": "key" }
+      ]
+    },
+    {
+      "collectionId": "face_descriptors",
+      "name": "Face Descriptors",
+      "attributes": [
+        { "key": "user_id", "type": "string", "size": 255, "required": true },
+        { "key": "company_id", "type": "string", "size": 255, "required": true },
+        { "key": "descriptor", "type": "string", "required": true },
+        { "key": "quality_score", "type": "double", "required": false },
+        { "key": "capture_method", "type": "string", "size": 50, "required": false },
+        { "key": "registered_at", "type": "datetime", "required": true },
+        { "key": "created_at", "type": "datetime", "required": true }
+      ],
+      "indexes": [
+        { "key": "user_id", "type": "key", "unique": true },
+        { "key": "company_id", "type": "key" }
+      ]
+    },
+    {
+      "collectionId": "settings",
+      "name": "Settings",
+      "attributes": [
+        { "key": "company_id", "type": "string", "size": 255, "required": false },
+        { "key": "setting_key", "type": "string", "size": 100, "required": true },
+        { "key": "setting_value", "type": "string", "size": 1000, "required": true },
+        { "key": "updated_at", "type": "datetime", "required": true }
+      ],
+      "indexes": [
+        { "key": "company_id", "type": "key" },
+        { "key": "setting_key", "type": "key" }
+      ]
+    },
+    {
+      "collectionId": "audit_log",
+      "name": "Audit Log",
+      "attributes": [
+        { "key": "user_id", "type": "string", "size": 255, "required": true },
+        { "key": "company_id", "type": "string", "size": 255, "required": false },
+        { "key": "action", "type": "string", "size": 100, "required": true },
+        { "key": "entity_type", "type": "string", "size": 100, "required": false },
+        { "key": "entity_id", "type": "string", "size": 255, "required": false },
+        { "key": "old_value", "type": "string", "size": 5000, "required": false },
+        { "key": "new_value", "type": "string", "size": 5000, "required": false },
+        { "key": "ip_address", "type": "string", "size": 50, "required": false },
+        { "key": "user_agent", "type": "string", "size": 500, "required": false },
+        { "key": "created_at", "type": "datetime", "required": true }
+      ],
+      "indexes": [
+        { "key": "user_id", "type": "key" },
+        { "key": "company_id", "type": "key" },
+        { "key": "created_at", "type": "key", "order": "desc" }
+      ]
+    }
+  ],
+  "instructions": "Use this JSON as a reference when creating collections in Appwrite Console. Each collection needs to be created manually with the specified attributes and indexes."
+}

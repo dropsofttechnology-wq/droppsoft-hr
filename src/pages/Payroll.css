@@ -1,0 +1,109 @@
+.payroll-page {
+  padding: 2rem;
+}
+
+.payroll-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.payroll-filters {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.payroll-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.payroll-table-container {
+  background: white;
+  border-radius: 0.5rem;
+  overflow: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.payroll-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1100px;
+}
+
+.payroll-table thead {
+  background: #f8fafc;
+}
+
+.payroll-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #334155;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.payroll-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.payroll-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.payroll-table tfoot td {
+  background: #f8fafc;
+  border-top: 2px solid #e5e7eb;
+}
+
+.emp-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+}
+
+.emp-name {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.emp-sub {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.2rem;
+}
+
+.ot-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.strong {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.success {
+  color: #059669;
+}
+
+@media (max-width: 768px) {
+  .payroll-page {
+    padding: 1rem;
+  }
+
+  .payroll-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+

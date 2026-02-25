@@ -1,0 +1,37 @@
+{
+  "name": "droppsoft-hr",
+  "version": "1.0.0",
+  "description": "HR & Payroll Management System with Face Recognition",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "check:appwrite": "node appwrite-setup.js"
+  },
+  "dependencies": {
+    "@vladmandic/face-api": "^1.6.9",
+    "appwrite": "^13.0.2",
+    "axios": "^1.6.2",
+    "date-fns": "^2.30.0",
+    "html5-qrcode": "^2.3.8",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
+    "qrcode": "^1.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "dotenv": "^16.3.1",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "vite": "^5.0.8"
+  }
+}
