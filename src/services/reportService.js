@@ -106,17 +106,17 @@ export const generateCompanyPayrollListPDF = ({
   const reportDate = format(new Date(), 'dd MMMM yyyy')
   const periodTitle = format(parseISO(`${period}-01`), 'MMMM yyyy').toUpperCase()
 
-  // Header Section
+  // Header Section - matching template format
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
   doc.text(reportDate, 40, 30)
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(16)
-  doc.text(String(companyName || '').toUpperCase(), doc.internal.pageSize.getWidth() / 2, 35, { align: 'center' })
+  doc.setFontSize(14)
+  doc.text(String(companyName || '').toUpperCase(), doc.internal.pageSize.getWidth() / 2, 50, { align: 'center' })
 
   doc.setFontSize(12)
-  doc.text(`COMPANY PAYROLL LIST FOR ${periodTitle}`, doc.internal.pageSize.getWidth() / 2, 55, { align: 'center' })
+  doc.text(`COMPANY PAYROLL LIST FOR ${periodTitle}`, doc.internal.pageSize.getWidth() / 2, 70, { align: 'center' })
 
   // Build rows (sorted by staff no)
   const rows = []
@@ -222,7 +222,7 @@ export const generateCompanyPayrollListPDF = ({
   }
 
   autoTable(doc, {
-    startY: 75,
+    startY: 85,
     head: [[
       'STAFF NO.',
       'NAME',
@@ -296,43 +296,90 @@ export const generateCompanyPayrollListPDF = ({
     }
   })
 
-  // Summary breakdown section (similar to the sample PDF second table)
-  let y2 = doc.lastAutoTable.finalY + 18
+  // Summary breakdown section - matching template format
+  let y2 = doc.lastAutoTable.finalY + 20
   const pageH = doc.internal.pageSize.getHeight()
-  if (y2 > pageH - 140) {
+  if (y2 > pageH - 200) {
     doc.addPage()
     y2 = 40
   }
 
-  const bankRows = [...bankTotals.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([bank, amount]) => [bank, money(amount)])
-
-  const deductionRows = [
-    ['ADVANCE', money(totals.advance)],
-    ['SHOPPING', money(totals.shopping)],
-    ['PAYE', money(totals.paye)],
-    ['NSSF', money(totals.nssf)],
-    ['NHIF', money(totals.nhif)],
-    ['TOTAL DEDUCTIONS', money(totals.totalDed)],
-    ['NET PAY TOTAL', money(totals.net)]
+  // Build summary rows matching template format
+  // Banks first, then deductions, with amounts in TOTAL EARN. column position (index 7)
+  const summaryRows = []
+  
+  // Add banks with net pay amounts in TOTAL EARN. column
+  const sortedBanks = [...bankTotals.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  for (const [bank, amount] of sortedBanks) {
+    const row = Array(18).fill('')
+    row[0] = bank
+    row[7] = money(amount) // Amount in TOTAL EARN. column
+    summaryRows.push(row)
+  }
+  
+  // Add empty row separator
+  summaryRows.push(Array(18).fill(''))
+  
+  // Add deductions with amounts in TOTAL EARN. column
+  const deductionItems = [
+    ['ADVANCE', totals.advance],
+    ['SHOPPING', totals.shopping],
+    ['PAYE', totals.paye],
+    ['NSSF', totals.nssf],
+    ['NHIF', totals.nhif],
+    ['TOTAL', totals.totalEarn]
   ]
+  
+  for (const [label, amount] of deductionItems) {
+    const row = Array(18).fill('')
+    row[0] = label
+    row[7] = money(amount) // Amount in TOTAL EARN. column
+    summaryRows.push(row)
+  }
 
+  // Add summary table using same structure as main table
   autoTable(doc, {
     startY: y2,
-    head: [['PAYMENT BREAKDOWN', 'AMOUNT (KES)']],
-    body: [
-      ...bankRows,
-      ['', ''],
-      ...deductionRows
-    ],
-    styles: { fontSize: 9, cellPadding: 4 },
-    headStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold' },
+    body: summaryRows,
+    styles: { fontSize: 8, cellPadding: 3 },
     columnStyles: {
-      0: { cellWidth: 260 },
-      1: { halign: 'right', cellWidth: 140 }
+      0: { cellWidth: 55, fontStyle: 'bold' },
+      1: { cellWidth: 140 },
+      2: { halign: 'right', cellWidth: 60 },
+      3: { halign: 'right', cellWidth: 60 },
+      4: { halign: 'right', cellWidth: 55 },
+      5: { halign: 'right', cellWidth: 55 },
+      6: { halign: 'right', cellWidth: 70 },
+      7: { halign: 'right', cellWidth: 65, fontStyle: 'bold' },
+      8: { halign: 'right', cellWidth: 55 },
+      9: { halign: 'right', cellWidth: 55 },
+      10: { halign: 'right', cellWidth: 55 },
+      11: { halign: 'right', cellWidth: 60 },
+      12: { halign: 'right', cellWidth: 55 },
+      13: { halign: 'right', cellWidth: 55 },
+      14: { halign: 'right', cellWidth: 55 },
+      15: { halign: 'right', cellWidth: 55 },
+      16: { halign: 'right', cellWidth: 65 },
+      17: { halign: 'right', cellWidth: 65 }
     }
   })
+
+  // Add footer with signature lines
+  let footerY = doc.lastAutoTable.finalY + 30
+  if (footerY > pageH - 80) {
+    doc.addPage()
+    footerY = 40
+  }
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.text('Prepared by: ................................', 40, footerY)
+  doc.text('Checked by: ................................', 40, footerY + 15)
+  doc.text('Authorised by: ................................', 40, footerY + 30)
+  doc.text('Authorised by: ................................', 40, footerY + 45)
+  
+  // Add date at bottom
+  doc.text(reportDate, 40, doc.internal.pageSize.getHeight() - 20)
 
   const pdfBytes = doc.output('arraybuffer')
   return new Blob([pdfBytes], { type: 'application/pdf' })
