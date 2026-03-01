@@ -462,21 +462,15 @@ const Payroll = () => {
             </div>
           <div className="summary-card">
             <div className="summary-label">Gross Total</div>
-            <div className="summary-value">KES {totals.gross.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+            <div className="summary-value">KES {(totals.totalEarn || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
           </div>
           <div className="summary-card">
-            <div className="summary-label">Actual Earnings</div>
-            <div className="summary-value">KES {(totals.actual_earnings ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
-            <small>1st–{(payDate > 1 ? (payDate - 1) + getOrdinal(payDate - 1) : 'N/A')}</small>
-          </div>
-          <div className="summary-card">
-            <div className="summary-label">Projected Earnings</div>
-            <div className="summary-value">KES {(totals.projected_earnings ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
-            <small>{payDate + getOrdinal(payDate)}–end</small>
+            <div className="summary-label">Total Deductions</div>
+            <div className="summary-value">KES {(totals.totalDed || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
           </div>
           <div className="summary-card">
             <div className="summary-label">Net Total</div>
-            <div className="summary-value success">KES {totals.net.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+            <div className="summary-value success">KES {(totals.net || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
           </div>
           </div>
 
