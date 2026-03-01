@@ -8,9 +8,10 @@ const Settings = () => {
   const { currentCompany } = useCompany()
   const [settings, setSettings] = useState({
     // Payroll Settings
+    pay_date: '25',
     standard_allowance: '0',
     housing_allowance: '0',
-    housing_allowance_type: 'fixed', // 'fixed' or 'percentage'
+    housing_allowance_type: 'fixed', // 'fixed', 'percentage', or 'percentage_gross'
     overtime_rate: '0',
     overtime_rate_type: 'fixed', // 'fixed' or 'percentage'
     
@@ -29,7 +30,20 @@ const Settings = () => {
     clock_out_earliest: '16:00',
     clock_out_latest: '20:00',
     minimum_time_gap: '1.5',
-    require_geolocation: false
+    require_geolocation: false,
+
+    // Face Recognition Settings
+    face_min_brightness: '25',
+    face_max_brightness: '95',
+    face_min_contrast: '15',
+    face_min_sharpness: '35',
+    face_min_coverage: '12',
+    face_max_coverage: '65',
+    face_max_angle: '20',
+    face_detection_confidence: '0.4',
+    face_detection_throttle_ms: '150',
+    face_matching_threshold: '0.35',
+    face_matching_min_confidence: '65'
   })
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -188,6 +202,22 @@ const Settings = () => {
           <h2>Payroll Settings</h2>
           
           <div className="form-group">
+            <label>Pay Date (for Projected Pay)</label>
+            <input
+              type="number"
+              name="pay_date"
+              value={settings.pay_date}
+              onChange={handleInputChange}
+              min="1"
+              max="31"
+            />
+            <small>
+              Day of month (e.g., 25 = pay on 25th). The day when employees are paid. 
+              Actual earnings: 1st to (pay date - 1). Projected earnings: pay date to end of month.
+            </small>
+          </div>
+
+          <div className="form-group">
             <label>Standard Allowance (KES)</label>
             <input
               type="number"
@@ -209,12 +239,17 @@ const Settings = () => {
             >
               <option value="fixed">Fixed Amount</option>
               <option value="percentage">Percentage of Basic Salary</option>
+              <option value="percentage_gross">Percentage of Gross Salary</option>
             </select>
           </div>
 
           <div className="form-group">
             <label>
-              Housing Allowance {settings.housing_allowance_type === 'percentage' ? '(%)' : '(KES)'}
+              Housing Allowance {
+                settings.housing_allowance_type === 'percentage' ? '(%)' : 
+                settings.housing_allowance_type === 'percentage_gross' ? '(%)' : 
+                '(KES)'
+              }
             </label>
             <input
               type="number"
@@ -222,8 +257,15 @@ const Settings = () => {
               value={settings.housing_allowance}
               onChange={handleInputChange}
               min="0"
-              step={settings.housing_allowance_type === 'percentage' ? '0.1' : '0.01'}
+              step={settings.housing_allowance_type === 'percentage' || settings.housing_allowance_type === 'percentage_gross' ? '0.1' : '0.01'}
             />
+            <small>
+              {settings.housing_allowance_type === 'percentage_gross' 
+                ? 'Calculated as percentage of Gross Salary (Basic + Standard Allowance + Housing Allowance)'
+                : settings.housing_allowance_type === 'percentage'
+                ? 'Calculated as percentage of Basic Salary'
+                : 'Fixed amount applied to all employees'}
+            </small>
           </div>
 
           <div className="form-group">
@@ -423,6 +465,167 @@ const Settings = () => {
               Require Geolocation for Attendance
             </label>
             <small>Employees must enable location services to clock in/out</small>
+          </div>
+        </div>
+
+        {/* Face Recognition Settings */}
+        <div className="settings-section">
+          <h2>Face Recognition Settings</h2>
+          <p className="settings-section-desc">
+            Adjust these to make face enrollment and attendance less or more strict. Lower values = more lenient.
+          </p>
+
+          <h3>Quality Thresholds (Enrollment)</h3>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Min Brightness (%)</label>
+              <input
+                type="number"
+                name="face_min_brightness"
+                value={settings.face_min_brightness}
+                onChange={handleInputChange}
+                min="0"
+                max="100"
+              />
+              <small>Default: 25. Lower = darker images allowed</small>
+            </div>
+            <div className="form-group">
+              <label>Max Brightness (%)</label>
+              <input
+                type="number"
+                name="face_max_brightness"
+                value={settings.face_max_brightness}
+                onChange={handleInputChange}
+                min="0"
+                max="100"
+              />
+              <small>Default: 95. Higher = brighter images allowed</small>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Min Contrast</label>
+              <input
+                type="number"
+                name="face_min_contrast"
+                value={settings.face_min_contrast}
+                onChange={handleInputChange}
+                min="0"
+                max="100"
+              />
+              <small>Default: 15. Lower = less contrast required</small>
+            </div>
+            <div className="form-group">
+              <label>Min Sharpness</label>
+              <input
+                type="number"
+                name="face_min_sharpness"
+                value={settings.face_min_sharpness}
+                onChange={handleInputChange}
+                min="0"
+                max="200"
+              />
+              <small>Default: 35. Lower = blurrier images allowed</small>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Min Face Size (%)</label>
+              <input
+                type="number"
+                name="face_min_coverage"
+                value={settings.face_min_coverage}
+                onChange={handleInputChange}
+                min="5"
+                max="80"
+              />
+              <small>Default: 12. % of frame. Lower = smaller faces OK</small>
+            </div>
+            <div className="form-group">
+              <label>Max Face Size (%)</label>
+              <input
+                type="number"
+                name="face_max_coverage"
+                value={settings.face_max_coverage}
+                onChange={handleInputChange}
+                min="10"
+                max="90"
+              />
+              <small>Default: 65. Higher = larger faces OK</small>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Max Face Angle (°)</label>
+            <input
+              type="number"
+              name="face_max_angle"
+              value={settings.face_max_angle}
+              onChange={handleInputChange}
+              min="5"
+              max="45"
+            />
+            <small>Default: 20. Higher = more head tilt allowed</small>
+          </div>
+
+          <h3>Detection</h3>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Detection Confidence (0–1)</label>
+              <input
+                type="number"
+                name="face_detection_confidence"
+                value={settings.face_detection_confidence}
+                onChange={handleInputChange}
+                min="0.1"
+                max="0.9"
+                step="0.05"
+              />
+              <small>Default: 0.4. Lower = detect more faces (may be less accurate)</small>
+            </div>
+            <div className="form-group">
+              <label>Detection Interval (ms)</label>
+              <input
+                type="number"
+                name="face_detection_throttle_ms"
+                value={settings.face_detection_throttle_ms}
+                onChange={handleInputChange}
+                min="50"
+                max="500"
+              />
+              <small>Default: 150. Lower = faster but more CPU</small>
+            </div>
+          </div>
+
+          <h3>Attendance Matching</h3>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Matching Threshold (0–1)</label>
+              <input
+                type="number"
+                name="face_matching_threshold"
+                value={settings.face_matching_threshold}
+                onChange={handleInputChange}
+                min="0.2"
+                max="0.6"
+                step="0.05"
+              />
+              <small>Default: 0.35. Higher = looser match (more false positives)</small>
+            </div>
+            <div className="form-group">
+              <label>Min Match Confidence (%)</label>
+              <input
+                type="number"
+                name="face_matching_min_confidence"
+                value={settings.face_matching_min_confidence}
+                onChange={handleInputChange}
+                min="50"
+                max="95"
+              />
+              <small>Default: 65. Lower = easier to match</small>
+            </div>
           </div>
         </div>
       </div>

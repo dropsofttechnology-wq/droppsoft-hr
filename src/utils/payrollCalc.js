@@ -73,10 +73,31 @@ export const computeAllowances = ({ basicSalary, standardAllowance, housingAllow
   const standard = Math.max(0, Number(standardAllowance) || 0)
   const housingRaw = Math.max(0, Number(housingAllowance) || 0)
 
-  const housing =
-    housingAllowanceType === 'percentage'
-      ? (basic * housingRaw) / 100
-      : housingRaw
+  let housing = 0
+  
+  if (housingAllowanceType === 'percentage') {
+    // Percentage of basic salary
+    housing = (basic * housingRaw) / 100
+  } else if (housingAllowanceType === 'percentage_gross') {
+    // Percentage of gross salary
+    // Gross = Basic + Standard + Housing
+    // Housing = Gross * Percentage / 100
+    // Gross = Basic + Standard + (Gross * Percentage / 100)
+    // Gross - (Gross * Percentage / 100) = Basic + Standard
+    // Gross * (1 - Percentage/100) = Basic + Standard
+    // Gross = (Basic + Standard) / (1 - Percentage/100)
+    const percentageDecimal = housingRaw / 100
+    if (percentageDecimal >= 1) {
+      // Prevent division by zero or negative
+      housing = 0
+    } else {
+      const gross = (basic + standard) / (1 - percentageDecimal)
+      housing = round2(gross * percentageDecimal)
+    }
+  } else {
+    // Fixed amount
+    housing = housingRaw
+  }
 
   return {
     standard_allowance: round2(standard),
@@ -134,7 +155,7 @@ export const computeOvertimePay = ({
   }
 }
 
-export const calculatePayrollLine = ({ employee, attendanceRecords, period, settings }) => {
+export const calculatePayrollLine = ({ employee, attendanceRecords, period, settings, employeeDeduction = null }) => {
   const basicSalary = Number(employee.basic_salary) || 0
 
   const allowances = computeAllowances({
@@ -144,30 +165,106 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
     housingAllowanceType: settings.housing_allowance_type || 'fixed'
   })
 
-  const grossBeforeOvertime = basicSalary + allowances.allowances_total
+  // Gross Pay = Total Fixed Monthly Remuneration
+  // According to Kenyan law: Basic Salary + House Allowance + Other Fixed Monthly Allowances
+  // This is the "wages" used for absence deduction calculations
+  // CRITICAL: This MUST include allowances, NOT just basic salary
+  const grossPay = round2(basicSalary + allowances.allowances_total)
+  
+  // Safety check: If grossPay equals basicSalary, it means allowances are 0 or missing
+  if (grossPay === basicSalary && allowances.allowances_total === 0) {
+    console.warn(`[Payroll] Employee ${employee.name || employee.employee_id}: No allowances configured. Gross Pay = Basic Salary only.`)
+  }
 
   const overtime = computeOvertimePay({
     attendanceRecords,
     workingHours: settings.working_hours ?? 8,
-    grossBeforeOvertime,
+    grossBeforeOvertime: grossPay,
     overtimeRateType: settings.overtime_rate_type || 'fixed',
     overtimeRate: settings.overtime_rate ?? 0
   })
 
   const holidayPay = 0
-  const absenceDeduction = 0
+  
+  // Calculate gross before deductions (includes overtime and holiday pay)
+  const grossBeforeDeductions = round2(grossPay + overtime.overtime_pay + holidayPay)
+  
+  // Calculate absence deduction: (Gross Pay / 30) * absent days
+  // Gross Pay = Total Fixed Monthly Remuneration (Basic + House Allowance + Other Fixed Allowances)
+  // This is per Kenyan law where "wages" refers to Total Fixed Monthly Remuneration
+  // 
+  // CRITICAL: We MUST use grossPay (Basic + Allowances), NOT basicSalary alone
+  // Formula: Absence Deduction = (Gross Pay / 30) × Absent Days
+  // Where Gross Pay = Basic Salary + House Allowance + Other Fixed Monthly Allowances
+  const absentDays = employeeDeduction?.absent_days ? Number(employeeDeduction.absent_days) : 0
+  
+  // Ensure we're using grossPay, not basicSalary
+  // grossPay = basicSalary + allowances.allowances_total (already calculated above)
+  const dailyRate = grossPay / 30
+  const absenceDeduction = round2(dailyRate * absentDays)
+  
+  // Debug logging to verify calculation (always log when absent days > 0)
+  if (absentDays > 0) {
+    const basicOnlyCalculation = round2((basicSalary / 30) * absentDays)
+    const correctCalculation = round2((grossPay / 30) * absentDays)
+    
+    console.log(`[Absence Deduction Calculation] ${employee.name || employee.employee_id || 'Unknown'}:`, {
+      'Basic Salary': `KES ${basicSalary.toFixed(2)}`,
+      'Standard Allowance': `KES ${allowances.standard_allowance.toFixed(2)}`,
+      'Housing Allowance': `KES ${allowances.housing_allowance.toFixed(2)}`,
+      'Total Allowances': `KES ${allowances.allowances_total.toFixed(2)}`,
+      'Gross Pay (Basic + Allowances)': `KES ${grossPay.toFixed(2)}`,
+      'Absent Days': absentDays,
+      'Daily Rate (Gross Pay / 30)': `KES ${dailyRate.toFixed(2)}`,
+      '✅ CORRECT Calculation (Gross Pay / 30 × Days)': `KES ${correctCalculation.toFixed(2)}`,
+      '❌ WRONG Calculation (Basic / 30 × Days)': `KES ${basicOnlyCalculation.toFixed(2)}`,
+      'Difference': `KES ${(correctCalculation - basicOnlyCalculation).toFixed(2)}`,
+      'Actual Deduction Applied': `KES ${absenceDeduction.toFixed(2)}`
+    })
+    
+    // Verify the calculation matches
+    if (Math.abs(absenceDeduction - correctCalculation) > 0.01) {
+      console.error(`[ERROR] Absence deduction mismatch! Expected: ${correctCalculation}, Got: ${absenceDeduction}`)
+    }
+  }
+  
+  // Validation: If someone accidentally uses basicSalary, this will catch it
+  if (absentDays > 0 && grossPay <= basicSalary) {
+    console.warn(`[WARNING] Gross Pay (${grossPay}) should be greater than Basic Salary (${basicSalary}) for absence deduction calculation.`)
+  }
+  
+  // Get advance and shopping amounts (deducted from gross)
+  const advanceAmount = employeeDeduction?.advance_amount ? Number(employeeDeduction.advance_amount) : 0
+  const shoppingAmount = employeeDeduction?.shopping_amount ? Number(employeeDeduction.shopping_amount) : 0
+  
+  // Adjusted gross pay (after absence, advance, and shopping deductions)
+  // Note: This is the final gross pay used for statutory deductions
+  const finalGrossPay = round2(grossBeforeDeductions - absenceDeduction - advanceAmount - shoppingAmount)
 
-  const grossPay = round2(grossBeforeOvertime + overtime.overtime_pay + holidayPay - absenceDeduction)
+  const shif = computeSHIF(finalGrossPay, settings.shif_rate ?? 2.75, settings.shif_minimum ?? 300)
+  const nssf = computeNSSF(finalGrossPay, settings.nssf_tier1_limit ?? 7000, settings.nssf_tier2_limit ?? 36000)
+  const ahl = computeAHL(finalGrossPay, settings.ahl_rate ?? 1.5)
 
-  const shif = computeSHIF(grossPay, settings.shif_rate ?? 2.75, settings.shif_minimum ?? 300)
-  const nssf = computeNSSF(grossPay, settings.nssf_tier1_limit ?? 7000, settings.nssf_tier2_limit ?? 36000)
-  const ahl = computeAHL(grossPay, settings.ahl_rate ?? 1.5)
-
-  const taxablePay = round2(grossPay - shif.shif_employee - nssf.nssf_employee - ahl.ahl_employee)
+  const taxablePay = round2(finalGrossPay - shif.shif_employee - nssf.nssf_employee - ahl.ahl_employee)
   const paye = computePAYE(taxablePay, settings.personal_relief ?? 2400)
 
   const otherDeductions = 0
-  const netPay = round2(grossPay - shif.shif_employee - nssf.nssf_employee - ahl.ahl_employee - paye - otherDeductions)
+  const netPay = round2(finalGrossPay - shif.shif_employee - nssf.nssf_employee - ahl.ahl_employee - paye - otherDeductions)
+
+  // Actual vs Projected earnings (based on pay_date)
+  const payDate = Math.min(31, Math.max(1, Number(settings.pay_date) || 25))
+  const [year, month] = (period || '').split('-').map(Number)
+  const daysInMonth = year && month ? new Date(year, month, 0).getDate() : 30
+  const actualDays = Math.max(0, payDate - 1)
+  const projectedDays = Math.max(0, daysInMonth - payDate + 1)
+  const actualRatio = daysInMonth > 0 ? actualDays / daysInMonth : 0
+  const projectedRatio = daysInMonth > 0 ? projectedDays / daysInMonth : 1
+
+  // Actual/Projected earnings based on final gross pay (after deductions)
+  const actual_earnings = round2(finalGrossPay * actualRatio)
+  const projected_earnings = round2(finalGrossPay * projectedRatio)
+  const actual_net = round2(netPay * actualRatio)
+  const projected_net = round2(netPay * projectedRatio)
 
   return {
     period,
@@ -182,12 +279,17 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
     standard_allowance: allowances.standard_allowance,
     housing_allowance: allowances.housing_allowance,
 
+    // Gross Pay (Total Fixed Monthly Remuneration) = Basic + House Allowance + Other Fixed Allowances
+    // This is the "wages" used for absence deduction per Kenyan law
+    gross_pay_base: round2(grossPay),
+
     overtime_hours: overtime.overtime_hours,
     overtime_pay: overtime.overtime_pay,
     holiday_pay: holidayPay,
     absence_deduction: absenceDeduction,
 
-    gross_pay: grossPay,
+    // Final gross pay after deductions (absence, advance, shopping)
+    gross_pay: finalGrossPay,
 
     shif_employee: shif.shif_employee,
     shif_employer: shif.shif_employer,
@@ -199,7 +301,22 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
     taxable_pay: taxablePay,
     paye,
     other_deductions: otherDeductions,
-    net_pay: netPay
+    net_pay: netPay,
+
+    // Employee deductions (for display)
+    absent_days: absentDays,
+    advance_amount: advanceAmount,
+    shopping_amount: shoppingAmount,
+
+    // Actual (1st to pay_date-1) vs Projected (pay_date to end)
+    actual_earnings,
+    projected_earnings,
+    actual_net,
+    projected_net,
+    pay_date: payDate,
+    actual_days: actualDays,
+    projected_days: projectedDays,
+    days_in_month: daysInMonth
   }
 }
 

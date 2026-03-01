@@ -264,10 +264,26 @@ const Payroll = () => {
         
         // Calculate housing allowance and standard allowance if not in saved run
         const basic = Number(run.basic_salary || 0)
-        const housingAllowance = run.housing_allowance ?? (settings?.housing_allowance_type === 'percentage' 
-          ? (basic * (settings?.housing_allowance || 0)) / 100 
-          : (settings?.housing_allowance || 0))
-        const standardAllowance = run.standard_allowance ?? (settings?.standard_allowance || 0)
+        const standard = Number(settings?.standard_allowance || 0)
+        let housingAllowance = run.housing_allowance
+        if (housingAllowance === undefined || housingAllowance === null) {
+          const raw = Number(settings?.housing_allowance || 0)
+          const t = settings?.housing_allowance_type || 'fixed'
+          if (t === 'percentage') {
+            housingAllowance = (basic * raw) / 100
+          } else if (t === 'percentage_gross') {
+            const percentageDecimal = raw / 100
+            if (percentageDecimal < 1) {
+              const gross = (basic + standard) / (1 - percentageDecimal)
+              housingAllowance = gross * percentageDecimal
+            } else {
+              housingAllowance = 0
+            }
+          } else {
+            housingAllowance = raw
+          }
+        }
+        const standardAllowance = run.standard_allowance ?? standard
         
         const gross = Number(run.gross_pay) || 0
         const net = Number(run.net_pay) || 0

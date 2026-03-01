@@ -89,7 +89,24 @@ const calcHousingAllowance = (basicSalary, settings) => {
   const basic = Number(basicSalary || 0)
   const raw = Number(settings?.housing_allowance || 0)
   const t = settings?.housing_allowance_type || 'fixed'
-  if (t === 'percentage') return (basic * raw) / 100
+  const standard = Number(settings?.standard_allowance || 0)
+  
+  if (t === 'percentage') {
+    // Percentage of basic salary
+    return (basic * raw) / 100
+  } else if (t === 'percentage_gross') {
+    // Percentage of gross salary
+    // Gross = Basic + Standard + Housing
+    // Housing = Gross * Percentage / 100
+    // Solving: Gross = (Basic + Standard) / (1 - Percentage/100)
+    const percentageDecimal = raw / 100
+    if (percentageDecimal >= 1) {
+      return 0
+    }
+    const gross = (basic + standard) / (1 - percentageDecimal)
+    return gross * percentageDecimal
+  }
+  // Fixed amount
   return raw
 }
 
