@@ -175,25 +175,37 @@ export const generateCompanyPayrollListPDF = ({
     const name = emp.name || ''
 
     const basic = Number(run.basic_salary || 0)
-    const hse = calcHousingAllowance(basic, settings)
+    // HSE ALLOW (Housing Allowance) is an EARNING, not a deduction
+    // Use saved value from run if available, otherwise recalculate
+    const hse = Number(run.housing_allowance || 0) || calcHousingAllowance(basic, settings)
     const sday = Number(run.holiday_pay || 0)
     const absence = -Number(run.absence_deduction || 0) // show as negative like the sample
     const standard = Number(settings?.standard_allowance || 0)
     const otherEarn = standard + Number(run.overtime_pay || 0)
 
-    // Total earnings exclude advance/shopping (they are shown in deductions section)
-    const totalEarn = basic + hse + sday + otherEarn + absence
+    // TOTAL_EARN = BASIC_PAY + HSE_ALLOW + OTHER_EARNINGS
+    // Use saved total_earn if available (from payroll calculation), otherwise calculate
+    // HSE ALLOW is included in earnings, NOT deductions
+    const totalEarn = Number(run.total_earn || 0) || (basic + hse + sday + otherEarn + absence)
 
+    // Deductions (from Gross Pay)
     const paye = Number(run.paye || 0)
     const nssf = Number(run.nssf_employee || 0)
     const nhif = Number(run.shif_employee || 0) // labelled NHIF in the sample
     const shopping = Number(deductionsByEmployeeId?.get(emp.$id)?.shopping_amount || 0)
     const advance = Number(deductionsByEmployeeId?.get(emp.$id)?.advance_amount || 0)
+    // HOUSING LEVY (AHL - Affordable Housing Levy) is a DEDUCTION
+    // Formula: HOUSING_LEVY = 1.5% of TOTAL_EARN
+    // CRITICAL: This is DIFFERENT from HSE ALLOW which is an earning
+    // - HSE ALLOW is added to Basic Pay to calculate TOTAL_EARN (it's an earning)
+    // - HOUSING LEVY is 1.5% of TOTAL_EARN and is a deduction
+    // - These are two separate accounting entries that should never be confused
     const housingLevy = Number(run.ahl_employee || 0) // labelled HOUSING in the sample
     const otherDed = Number(run.other_deductions || 0)
     const pension = 0
     const totalDed = paye + nssf + nhif + shopping + advance + housingLevy + otherDed + pension
 
+    // Net Pay = Total Earnings - Total Deductions
     const net = totalEarn - totalDed
 
     const bankName = (emp.bank_name || '').trim() || 'CASH'
@@ -281,28 +293,28 @@ export const generateCompanyPayrollListPDF = ({
       money(totals.totalDed),
       money(totals.net)
     ]],
-    styles: { fontSize: 7, cellPadding: 3, overflow: 'linebreak' },
-    headStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold' },
-    footStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold' },
+    styles: { fontSize: 6, cellPadding: 1.5, overflow: 'linebreak' },
+    headStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold', fontSize: 6 },
+    footStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold', fontSize: 6 },
     columnStyles: {
-      0: { cellWidth: 55 },
-      1: { cellWidth: 140 },
-      2: { halign: 'right', cellWidth: 60 },
-      3: { halign: 'right', cellWidth: 60 },
-      4: { halign: 'right', cellWidth: 55 },
-      5: { halign: 'right', cellWidth: 55 },
-      6: { halign: 'right', cellWidth: 70 },
-      7: { halign: 'right', cellWidth: 65 },
-      8: { halign: 'right', cellWidth: 55 },
-      9: { halign: 'right', cellWidth: 55 },
-      10: { halign: 'right', cellWidth: 55 },
-      11: { halign: 'right', cellWidth: 60 },
-      12: { halign: 'right', cellWidth: 55 },
-      13: { halign: 'right', cellWidth: 55 },
-      14: { halign: 'right', cellWidth: 55 },
-      15: { halign: 'right', cellWidth: 55 },
-      16: { halign: 'right', cellWidth: 65 },
-      17: { halign: 'right', cellWidth: 65 }
+      0: { cellWidth: 40 }, // STAFF NO.
+      1: { cellWidth: 85 }, // NAME
+      2: { halign: 'right', cellWidth: 42 }, // BASIC PAY
+      3: { halign: 'right', cellWidth: 42 }, // HSE ALLOW
+      4: { halign: 'right', cellWidth: 40 }, // S/DAYSHOL
+      5: { halign: 'right', cellWidth: 40 }, // ABSENCE
+      6: { halign: 'right', cellWidth: 44 }, // OTHER EARNINGS
+      7: { halign: 'right', cellWidth: 44 }, // TOTAL EARN.
+      8: { halign: 'right', cellWidth: 40 }, // P.A.Y.E
+      9: { halign: 'right', cellWidth: 40 }, // N.S.S.F
+      10: { halign: 'right', cellWidth: 40 }, // N.H.I.F
+      11: { halign: 'right', cellWidth: 40 }, // SHOPPING
+      12: { halign: 'right', cellWidth: 40 }, // ADVANC
+      13: { halign: 'right', cellWidth: 40 }, // HOUSING
+      14: { halign: 'right', cellWidth: 40 }, // OTHER DED
+      15: { halign: 'right', cellWidth: 40 }, // PENSION
+      16: { halign: 'right', cellWidth: 44 }, // TOTAL DED.
+      17: { halign: 'right', cellWidth: 44 }  // NET PAY
     },
     didDrawPage: (data) => {
       // footer page count
