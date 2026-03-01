@@ -16,6 +16,43 @@
   align-items: flex-end;
 }
 
+.payroll-pay-date-info {
+  align-self: center;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.payroll-info-box {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 0.5rem;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #0c4a6e;
+}
+
+.payroll-info-box strong {
+  color: #075985;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.payroll-info-box ul {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.5rem;
+}
+
+.payroll-info-box li {
+  margin-bottom: 0.75rem;
+}
+
+.payroll-info-box small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #0369a1;
+  font-size: 0.85rem;
+}
+
 .payroll-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -33,7 +70,19 @@
 .payroll-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1100px;
+  min-width: 1600px;
+}
+
+.deduction-amount {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.summary-card small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #64748b;
+  font-size: 0.75rem;
 }
 
 .payroll-table thead {
@@ -49,11 +98,19 @@
   white-space: nowrap;
 }
 
+.payroll-table th:nth-child(n+3) {
+  text-align: right;
+}
+
 .payroll-table td {
   padding: 0.85rem 1rem;
   border-bottom: 1px solid #e5e7eb;
   color: #475569;
   white-space: nowrap;
+}
+
+.payroll-table .text-right {
+  text-align: right;
 }
 
 .payroll-table tbody tr:hover {
