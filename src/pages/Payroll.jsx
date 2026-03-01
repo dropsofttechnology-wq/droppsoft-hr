@@ -141,7 +141,7 @@ const Payroll = () => {
   }, [attendance])
 
   const totals = useMemo(() => {
-    if (!preview.length || !settings) return {
+    if (!preview.length) return {
       basic: 0, hse: 0, sday: 0, absence: 0, otherEarn: 0, totalEarn: 0,
       paye: 0, nssf: 0, nhif: 0, shopping: 0, advance: 0, housing: 0, otherDed: 0, pension: 0, totalDed: 0, net: 0
     }
@@ -189,7 +189,7 @@ const Payroll = () => {
     })
     
     return totals
-  }, [preview, settings])
+  }, [preview])
 
   const handlePreview = async () => {
     if (!currentCompany) return
@@ -261,6 +261,14 @@ const Payroll = () => {
       const lines = employees.map(emp => {
         const run = byEmployeeId.get(emp.$id)
         if (!run) return null
+        
+        // Calculate housing allowance and standard allowance if not in saved run
+        const basic = Number(run.basic_salary || 0)
+        const housingAllowance = run.housing_allowance ?? (settings?.housing_allowance_type === 'percentage' 
+          ? (basic * (settings?.housing_allowance || 0)) / 100 
+          : (settings?.housing_allowance || 0))
+        const standardAllowance = run.standard_allowance ?? (settings?.standard_allowance || 0)
+        
         const gross = Number(run.gross_pay) || 0
         const net = Number(run.net_pay) || 0
         return {
@@ -272,6 +280,8 @@ const Payroll = () => {
           position: emp.position || '',
           basic_salary: run.basic_salary,
           allowances: run.allowances,
+          housing_allowance: housingAllowance,
+          standard_allowance: standardAllowance,
           gross_pay: run.gross_pay,
           actual_earnings: run.actual_earnings ?? Math.round(gross * actualRatio * 100) / 100,
           projected_earnings: run.projected_earnings ?? Math.round(gross * projectedRatio * 100) / 100,
@@ -285,7 +295,9 @@ const Payroll = () => {
           overtime_pay: run.overtime_pay,
           holiday_pay: run.holiday_pay,
           absence_deduction: run.absence_deduction,
-          other_deductions: run.other_deductions
+          other_deductions: run.other_deductions,
+          shopping_amount: run.shopping_amount || 0,
+          advance_amount: run.advance_amount || 0
         }
       }).filter(Boolean)
 
@@ -499,8 +511,8 @@ const Payroll = () => {
                 </thead>
                 <tbody>
                   {preview.map((l) => {
-                    const emp = employees.find(e => e.$id === l.employee_id)
-                    const staffNo = emp?.employee_id || emp?.staff_no || ''
+                    const emp = employees.find(e => e.$id === l.employee_id) || null
+                    const staffNo = emp?.employee_id || emp?.staff_no || l.employee_id || ''
                     const basic = Number(l.basic_salary || 0)
                     const hse = Number(l.housing_allowance || 0)
                     const sday = Number(l.holiday_pay || 0)
