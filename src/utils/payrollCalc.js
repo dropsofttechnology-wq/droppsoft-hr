@@ -165,9 +165,11 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
     housingAllowanceType: settings.housing_allowance_type || 'fixed'
   })
 
-  // Gross Pay = Total Fixed Monthly Remuneration
+  // Gross Pay = Total Fixed Monthly Remuneration (EARNINGS)
+  // Formula: Basic Pay + House Allowance (HSE ALLOW) + Other Monthly Allowances
   // According to Kenyan law: Basic Salary + House Allowance + Other Fixed Monthly Allowances
   // This is the "wages" used for absence deduction calculations
+  // CRITICAL: HSE ALLOW is an EARNING, not a deduction
   // CRITICAL: This MUST include allowances, NOT just basic salary
   const grossPay = round2(basicSalary + allowances.allowances_total)
   
@@ -233,23 +235,62 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
     console.warn(`[WARNING] Gross Pay (${grossPay}) should be greater than Basic Salary (${basicSalary}) for absence deduction calculation.`)
   }
   
-  // Get advance and shopping amounts (deducted from gross)
+  // Get advance and shopping amounts (POST-TAX deductions - deducted from Net Pay only)
+  // CRITICAL: Advance and Shopping are POST-TAX deductions and must NOT reduce taxable income
   const advanceAmount = employeeDeduction?.advance_amount ? Number(employeeDeduction.advance_amount) : 0
   const shoppingAmount = employeeDeduction?.shopping_amount ? Number(employeeDeduction.shopping_amount) : 0
   
-  // Adjusted gross pay (after absence, advance, and shopping deductions)
-  // Note: This is the final gross pay used for statutory deductions
-  const finalGrossPay = round2(grossBeforeDeductions - absenceDeduction - advanceAmount - shoppingAmount)
+  // TOTAL EARN = Basic Pay + HSE ALLOW + Other Monthly Allowances + Overtime + Holiday Pay
+  // Formula: TOTAL_EARN = BASIC_PAY + HSE_ALLOW + OTHER_EARNINGS
+  // This is the gross before any deductions
+  // CRITICAL: HSE ALLOW is part of earnings, NOT a deduction
+  const totalEarn = round2(grossBeforeDeductions)
+  
+  // Gross Pay After Absence (absence is a PRE-TAX deduction)
+  // Absence deduction reduces gross before calculating statutory deductions and tax
+  const grossAfterAbsence = round2(grossBeforeDeductions - absenceDeduction)
 
-  const shif = computeSHIF(finalGrossPay, settings.shif_rate ?? 2.75, settings.shif_minimum ?? 300)
-  const nssf = computeNSSF(finalGrossPay, settings.nssf_tier1_limit ?? 7000, settings.nssf_tier2_limit ?? 36000)
-  const ahl = computeAHL(finalGrossPay, settings.ahl_rate ?? 1.5)
+  // Statutory Deductions (calculated from Gross After Absence, NOT including advance/shopping)
+  // SHIF and NSSF are calculated from gross after absence deduction only
+  // CRITICAL: Advance and Shopping do NOT reduce the base for SHIF/NSSF calculation
+  const shif = computeSHIF(grossAfterAbsence, settings.shif_rate ?? 2.75, settings.shif_minimum ?? 300)
+  const nssf = computeNSSF(grossAfterAbsence, settings.nssf_tier1_limit ?? 7000, settings.nssf_tier2_limit ?? 36000)
+  
+  // HOUSING LEVY (AHL) must be calculated as 1.5% of TOTAL EARN (before absence deduction)
+  // CRITICAL: This is DIFFERENT from HSE ALLOW which is an earning
+  // - HSE ALLOW is added to Basic Pay to calculate TOTAL EARN (it's an earning)
+  // - HOUSING LEVY is 1.5% of TOTAL EARN and is a deduction
+  // - These are two separate accounting entries that should never be confused
+  const ahl = computeAHL(totalEarn, settings.ahl_rate ?? 1.5)
 
-  const taxablePay = round2(finalGrossPay - shif.shif_employee - nssf.nssf_employee - ahl.ahl_employee)
+  // Taxable Pay = Gross After Absence - SHIF - NSSF - AHL (Housing Levy)
+  // CRITICAL: Advance and Shopping are NOT deducted here - they are POST-TAX deductions
+  // Only allowable non-taxable deductions (SHIF, NSSF, AHL) reduce taxable income
+  const taxablePay = round2(grossAfterAbsence - shif.shif_employee - nssf.nssf_employee - ahl.ahl_employee)
   const paye = computePAYE(taxablePay, settings.personal_relief ?? 2400)
 
   const otherDeductions = 0
-  const netPay = round2(finalGrossPay - shif.shif_employee - nssf.nssf_employee - ahl.ahl_employee - paye - otherDeductions)
+  
+  // Net Pay Calculation
+  // Formula: NET_PAY = TAXABLE_PAY - PAYE - ADVANCE - SHOPPING - OTHER_DEDUCTIONS
+  // 
+  // CRITICAL: Advance and Shopping are POST-TAX deductions
+  // They are deducted from Net Pay (after tax), NOT from Gross Taxable Income
+  // CRITICAL: Shopping and Advance are treated EXACTLY the same - only the name differs
+  // Both are deducted from Net Pay identically, order doesn't matter
+  // 
+  // Calculation Flow:
+  // 1. Gross Earnings = Basic + Allowances + Overtime + Holiday Pay
+  // 2. Gross After Absence = Gross Earnings - Absence Deduction (PRE-TAX)
+  // 3. Statutory Deductions = SHIF + NSSF + AHL (from Gross After Absence)
+  // 4. Taxable Pay = Gross After Absence - Statutory Deductions
+  // 5. PAYE = Tax on Taxable Pay - Personal Relief
+  // 6. Net Pay = Taxable Pay - PAYE - Advance - Shopping - Other Deductions
+  //    (Shopping and Advance are interchangeable in this formula)
+  const netPay = round2(taxablePay - paye - advanceAmount - shoppingAmount - otherDeductions)
+  
+  // Total Deductions for reporting purposes (all deductions including post-tax)
+  const totalDeductions = round2(shif.shif_employee + nssf.nssf_employee + ahl.ahl_employee + paye + advanceAmount + shoppingAmount + otherDeductions)
 
   // Actual vs Projected earnings (based on pay_date)
   const payDate = Math.min(31, Math.max(1, Number(settings.pay_date) || 25))
@@ -260,9 +301,10 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
   const actualRatio = daysInMonth > 0 ? actualDays / daysInMonth : 0
   const projectedRatio = daysInMonth > 0 ? projectedDays / daysInMonth : 1
 
-  // Actual/Projected earnings based on final gross pay (after deductions)
-  const actual_earnings = round2(finalGrossPay * actualRatio)
-  const projected_earnings = round2(finalGrossPay * projectedRatio)
+  // Actual/Projected earnings based on gross after absence (before advance/shopping)
+  // Note: Advance and Shopping are post-tax, so they don't affect actual/projected earnings calculation
+  const actual_earnings = round2(grossAfterAbsence * actualRatio)
+  const projected_earnings = round2(grossAfterAbsence * projectedRatio)
   const actual_net = round2(netPay * actualRatio)
   const projected_net = round2(netPay * projectedRatio)
 
@@ -288,8 +330,14 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
     holiday_pay: holidayPay,
     absence_deduction: absenceDeduction,
 
-    // Final gross pay after deductions (absence, advance, shopping)
-    gross_pay: finalGrossPay,
+    // TOTAL EARN = Basic Pay + HSE ALLOW + Other Monthly Allowances + Overtime + Holiday Pay
+    // This is the gross before any deductions
+    total_earn: round2(totalEarn),
+
+    // Gross pay after absence deduction (before advance/shopping)
+    // Used for statutory deductions (SHIF, NSSF) calculation
+    // CRITICAL: Advance and Shopping are POST-TAX and do NOT reduce this value
+    gross_pay: grossAfterAbsence,
 
     shif_employee: shif.shif_employee,
     shif_employer: shif.shif_employer,

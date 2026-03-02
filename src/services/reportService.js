@@ -6,6 +6,7 @@ import { getEmployeeDeductionsForPeriod } from './employeeDeductionsService'
 import { format, parseISO } from 'date-fns'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { computePAYE } from '../utils/payrollCalc'
 
 const listAllDocuments = async (collectionId, baseQueries = []) => {
   try {
@@ -65,14 +66,15 @@ export const fetchPayrollDataForPeriod = async (companyId, period) => {
 export const fetchCompanyPayrollListDataForPeriod = async (companyId, period) => {
   const [{ employees, runs, empById }, s, deductions] = await Promise.all([
     fetchPayrollDataForPeriod(companyId, period),
-    getCompanySettings(companyId, ['standard_allowance', 'housing_allowance', 'housing_allowance_type']).catch(() => ({})),
+    getCompanySettings(companyId, ['standard_allowance', 'housing_allowance', 'housing_allowance_type', 'personal_relief']).catch(() => ({})),
     getEmployeeDeductionsForPeriod(companyId, period).catch(() => [])
   ])
 
   const settings = {
     standard_allowance: parseFloat(s.standard_allowance) || 0,
     housing_allowance: parseFloat(s.housing_allowance) || 0,
-    housing_allowance_type: s.housing_allowance_type || 'fixed'
+    housing_allowance_type: s.housing_allowance_type || 'fixed',
+    personal_relief: parseFloat(s.personal_relief) || 2400
   }
 
   const deductionsByEmployeeId = new Map(deductions.map(d => [d.employee_id, d]))
@@ -83,6 +85,120 @@ export const fetchCompanyPayrollListDataForPeriod = async (companyId, period) =>
 const money = (n) => {
   const num = Number(n || 0)
   return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/**
+ * Add company logo to PDF document (top left) - loads image and stores for reuse
+ * @param {jsPDF} doc - The PDF document
+ * @param {string} logoUrl - The logo URL
+ * @returns {Promise<{width: number, height: number, img: Image}|null>} - Logo data for reuse
+ */
+const loadLogoForPDF = async (doc, logoUrl) => {
+  if (!logoUrl) return null
+  
+  try {
+    // Load image from URL
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    
+    return await new Promise((resolve) => {
+      img.onload = () => {
+        try {
+          // Calculate dimensions with max 60x60
+          const maxWidth = 60
+          const maxHeight = 60
+          let width = img.width
+          let height = img.height
+          
+          // Scale down if too large
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height)
+            width = width * ratio
+            height = height * ratio
+          }
+          
+          resolve({ width, height, img })
+        } catch (error) {
+          console.warn('Failed to process logo image:', error)
+          resolve(null)
+        }
+      }
+      img.onerror = () => {
+        console.warn('Failed to load logo image:', logoUrl)
+        resolve(null)
+      }
+      img.src = logoUrl
+    })
+  } catch (error) {
+    console.warn('Error loading logo for PDF:', error)
+    return null
+  }
+}
+
+/**
+ * Add company logo to current page of PDF document (top left)
+ * @param {jsPDF} doc - The PDF document
+ * @param {object} logoData - Logo data from loadLogoForPDF
+ */
+const addLogoToCurrentPage = (doc, logoData) => {
+  if (!logoData) return
+  
+  try {
+    doc.addImage(logoData.img, 'PNG', 40, 20, logoData.width, logoData.height)
+  } catch (error) {
+    console.warn('Failed to add logo to PDF page:', error)
+  }
+}
+
+/**
+ * Add company logo to PDF document (top left) - adds to first page only
+ * For multi-page documents, use loadLogoForPDF and addLogoToCurrentPage in didDrawPage
+ * @param {jsPDF} doc - The PDF document
+ * @param {string} logoUrl - The logo URL
+ * @returns {Promise<{width: number, height: number, img: Image}|null>} - Logo data for reuse on other pages
+ */
+const addLogoToPDF = async (doc, logoUrl) => {
+  const logoData = await loadLogoForPDF(doc, logoUrl)
+  if (logoData) {
+    addLogoToCurrentPage(doc, logoData)
+  }
+  return logoData
+}
+
+/**
+ * Add footer to PDF document with "Powered by Dropsoft Technologies Ltd"
+ * @param {jsPDF} doc - The PDF document
+ * @param {object} options - Footer options
+ */
+const addFooterToPDF = (doc, options = {}) => {
+  const pageCount = doc.getNumberOfPages()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    
+    // Footer text
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(100, 100, 100)
+    
+    const footerY = pageHeight - 20
+    const footerText = 'Powered by Dropsoft Technologies Ltd'
+    const footerText2 = options.additionalInfo || 'HR Management System'
+    
+    // Center footer text
+    doc.text(footerText, pageWidth / 2, footerY, { align: 'center' })
+    if (footerText2) {
+      doc.text(footerText2, pageWidth / 2, footerY + 12, { align: 'center' })
+    }
+    
+    // Page number (if not already added)
+    if (!options.hidePageNumber) {
+      doc.setFontSize(8)
+      doc.text(`Page ${i} of ${pageCount}`, pageWidth - 60, footerY)
+    }
+  }
 }
 
 const calcHousingAllowance = (basicSalary, settings) => {
@@ -110,8 +226,9 @@ const calcHousingAllowance = (basicSalary, settings) => {
   return raw
 }
 
-export const generateCompanyPayrollListPDF = ({
+export const generateCompanyPayrollListPDF = async ({
   companyName,
+  companyLogoUrl,
   period,
   runs,
   empById,
@@ -119,21 +236,39 @@ export const generateCompanyPayrollListPDF = ({
   deductionsByEmployeeId
 }) => {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+  
+  // Load logo once for reuse on all pages
+  const logoData = await loadLogoForPDF(doc, companyLogoUrl)
+  
+  // Add logo to first page
+  if (logoData) {
+    addLogoToCurrentPage(doc, logoData)
+  }
 
   const reportDate = format(new Date(), 'dd MMMM yyyy')
   const periodTitle = format(parseISO(`${period}-01`), 'MMMM yyyy').toUpperCase()
 
-  // Header Section - matching template format
+  // Header Section - improved layout
+  // Adjust Y position if logo is present
+  const headerY = companyLogoUrl ? 55 : 35
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  doc.text(reportDate, 40, 30)
+  doc.setFontSize(9)
+  doc.text(reportDate, 40, headerY)
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
-  doc.text(String(companyName || '').toUpperCase(), doc.internal.pageSize.getWidth() / 2, 50, { align: 'center' })
+  doc.setFontSize(16)
+  const companyNameY = companyLogoUrl ? 75 : 55
+  doc.text(String(companyName || '').toUpperCase(), doc.internal.pageSize.getWidth() / 2, companyNameY, { align: 'center' })
 
-  doc.setFontSize(12)
-  doc.text(`COMPANY PAYROLL LIST FOR ${periodTitle}`, doc.internal.pageSize.getWidth() / 2, 70, { align: 'center' })
+  doc.setFontSize(11)
+  const periodTitleY = companyLogoUrl ? 95 : 75
+  doc.text(`COMPANY PAYROLL LIST FOR ${periodTitle}`, doc.internal.pageSize.getWidth() / 2, periodTitleY, { align: 'center' })
+  
+  // Add a line separator
+  doc.setDrawColor(200, 200, 200)
+  doc.setLineWidth(0.5)
+  const lineY = periodTitleY + 8
+  doc.line(40, lineY, doc.internal.pageSize.getWidth() - 40, lineY)
 
   // Build rows (sorted by staff no)
   const rows = []
@@ -156,12 +291,24 @@ export const generateCompanyPayrollListPDF = ({
     net: 0
   }
 
+  // Sort by STAFF NO. (handle both numeric and alphanumeric staff numbers)
   const sortedRuns = [...(runs || [])].sort((a, b) => {
     const ea = empById.get(a.employee_id)
     const eb = empById.get(b.employee_id)
-    const sa = (ea?.employee_id || ea?.staff_no || '').toString()
-    const sb = (eb?.employee_id || eb?.staff_no || '').toString()
-    return sa.localeCompare(sb)
+    const sa = (ea?.employee_id || ea?.staff_no || '').toString().trim()
+    const sb = (eb?.employee_id || eb?.staff_no || '').toString().trim()
+    
+    // Try numeric comparison first (for numeric staff numbers like "001", "002", "010")
+    const numA = parseInt(sa, 10)
+    const numB = parseInt(sb, 10)
+    
+    if (!isNaN(numA) && !isNaN(numB)) {
+      // Both are numeric - compare as numbers
+      return numA - numB
+    }
+    
+    // If not both numeric, use string comparison
+    return sa.localeCompare(sb, undefined, { numeric: true, sensitivity: 'base' })
   })
 
   // Bank / payment breakdown (based on employee bank_name)
@@ -179,7 +326,8 @@ export const generateCompanyPayrollListPDF = ({
     // Use saved value from run if available, otherwise recalculate
     const hse = Number(run.housing_allowance || 0) || calcHousingAllowance(basic, settings)
     const sday = Number(run.holiday_pay || 0)
-    const absence = -Number(run.absence_deduction || 0) // show as negative like the sample
+    const absenceDeduction = Number(run.absence_deduction || 0)
+    const absence = -absenceDeduction // show as negative like the sample
     const standard = Number(settings?.standard_allowance || 0)
     const otherEarn = standard + Number(run.overtime_pay || 0)
 
@@ -188,25 +336,56 @@ export const generateCompanyPayrollListPDF = ({
     // HSE ALLOW is included in earnings, NOT deductions
     const totalEarn = Number(run.total_earn || 0) || (basic + hse + sday + otherEarn + absence)
 
-    // Deductions (from Gross Pay)
-    const paye = Number(run.paye || 0)
+    // Statutory deductions (from saved run - these are correct)
     const nssf = Number(run.nssf_employee || 0)
     const nhif = Number(run.shif_employee || 0) // labelled NHIF in the sample
-    const shopping = Number(deductionsByEmployeeId?.get(emp.$id)?.shopping_amount || 0)
-    const advance = Number(deductionsByEmployeeId?.get(emp.$id)?.advance_amount || 0)
     // HOUSING LEVY (AHL - Affordable Housing Levy) is a DEDUCTION
     // Formula: HOUSING_LEVY = 1.5% of TOTAL_EARN
     // CRITICAL: This is DIFFERENT from HSE ALLOW which is an earning
-    // - HSE ALLOW is added to Basic Pay to calculate TOTAL_EARN (it's an earning)
-    // - HOUSING LEVY is 1.5% of TOTAL_EARN and is a deduction
-    // - These are two separate accounting entries that should never be confused
     const housingLevy = Number(run.ahl_employee || 0) // labelled HOUSING in the sample
+    
+    // Post-tax deductions (do NOT reduce taxable income)
+    // CRITICAL: Shopping and Advance are treated EXACTLY the same - only the name differs
+    // Both are POST-TAX deductions, both retrieved from the same source, both used identically
+    const shopping = Number(
+      deductionsByEmployeeId?.get(emp.$id)?.shopping_amount || 
+      run.shopping_amount || 
+      0
+    )
+    const advance = Number(
+      deductionsByEmployeeId?.get(emp.$id)?.advance_amount || 
+      run.advance_amount || 
+      0
+    )
+    
+    // RECALCULATE PAYE and Net Pay using the correct logic (post-tax deductions)
+    // This ensures PDF shows correct values even if saved runs have old calculations
+    
+    // Step 1: Calculate Gross Earnings (before any deductions)
+    // Gross Earnings = Basic + HSE Allowance + Standard Allowance + Overtime + Holiday Pay
+    const grossEarnings = basic + hse + sday + otherEarn
+    
+    // Step 2: Calculate Gross After Absence (absence is a PRE-TAX deduction)
+    const grossAfterAbsence = grossEarnings - absenceDeduction
+    
+    // Step 3: Calculate Taxable Pay (Advance and Shopping do NOT reduce this)
+    // Taxable Pay = Gross After Absence - SHIF - NSSF - AHL
+    const taxablePay = Math.max(0, grossAfterAbsence - nhif - nssf - housingLevy)
+    
+    // Step 4: Recalculate PAYE using correct formula
+    const paye = computePAYE(taxablePay, settings.personal_relief ?? 2400)
+    
+    // Step 5: Calculate Net Pay (Advance and Shopping are POST-TAX deductions)
+    // CRITICAL: Shopping and Advance are treated EXACTLY the same - both deducted from Net Pay after tax
+    // Net Pay = Taxable Pay - PAYE - Advance - Shopping - Other Deductions
+    // Order doesn't matter: (taxablePay - paye - advance - shopping) = (taxablePay - paye - shopping - advance)
     const otherDed = Number(run.other_deductions || 0)
     const pension = 0
+    const net = Math.max(0, taxablePay - paye - advance - shopping - otherDed - pension)
+    
+    // Total Deductions for display (all deductions including post-tax)
+    // Shopping and Advance are both included identically in total deductions
     const totalDed = paye + nssf + nhif + shopping + advance + housingLevy + otherDed + pension
-
-    // Net Pay = Total Earnings - Total Deductions
-    const net = totalEarn - totalDed
 
     const bankName = (emp.bank_name || '').trim() || 'CASH'
     bankTotals.set(bankName, (bankTotals.get(bankName) || 0) + net)
@@ -250,8 +429,10 @@ export const generateCompanyPayrollListPDF = ({
     totals.net += net
   }
 
+  const tableStartY = companyLogoUrl ? 115 : 90
   autoTable(doc, {
-    startY: 85,
+    startY: tableStartY,
+    theme: 'grid',
     head: [[
       'STAFF NO.',
       'NAME',
@@ -293,45 +474,82 @@ export const generateCompanyPayrollListPDF = ({
       money(totals.totalDed),
       money(totals.net)
     ]],
-    styles: { fontSize: 6, cellPadding: 1.5, overflow: 'linebreak' },
-    headStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold', fontSize: 6 },
-    footStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold', fontSize: 6 },
+    styles: { 
+      fontSize: 5, 
+      cellPadding: 1, 
+      overflow: 'linebreak',
+      lineColor: [220, 220, 220],
+      lineWidth: 0.1
+    },
+    headStyles: { 
+      fillColor: [240, 240, 240], 
+      textColor: 0, 
+      fontStyle: 'bold', 
+      fontSize: 5,
+      halign: 'center'
+    },
+    footStyles: { 
+      fillColor: [250, 250, 250], 
+      textColor: 0, 
+      fontStyle: 'bold', 
+      fontSize: 5 
+    },
+    margin: { left: 15, right: 15 },
+    tableWidth: 'auto',
     columnStyles: {
-      0: { cellWidth: 40 }, // STAFF NO.
-      1: { cellWidth: 85 }, // NAME
-      2: { halign: 'right', cellWidth: 42 }, // BASIC PAY
-      3: { halign: 'right', cellWidth: 42 }, // HSE ALLOW
-      4: { halign: 'right', cellWidth: 40 }, // S/DAYSHOL
-      5: { halign: 'right', cellWidth: 40 }, // ABSENCE
-      6: { halign: 'right', cellWidth: 44 }, // OTHER EARNINGS
-      7: { halign: 'right', cellWidth: 44 }, // TOTAL EARN.
-      8: { halign: 'right', cellWidth: 40 }, // P.A.Y.E
-      9: { halign: 'right', cellWidth: 40 }, // N.S.S.F
-      10: { halign: 'right', cellWidth: 40 }, // N.H.I.F
-      11: { halign: 'right', cellWidth: 40 }, // SHOPPING
-      12: { halign: 'right', cellWidth: 40 }, // ADVANC
-      13: { halign: 'right', cellWidth: 40 }, // HOUSING
-      14: { halign: 'right', cellWidth: 40 }, // OTHER DED
-      15: { halign: 'right', cellWidth: 40 }, // PENSION
-      16: { halign: 'right', cellWidth: 44 }, // TOTAL DED.
-      17: { halign: 'right', cellWidth: 44 }  // NET PAY
+      0: { cellWidth: 32, halign: 'left' }, // STAFF NO.
+      1: { cellWidth: 68, halign: 'left' }, // NAME
+      2: { halign: 'right', cellWidth: 33 }, // BASIC PAY
+      3: { halign: 'right', cellWidth: 33 }, // HSE ALLOW
+      4: { halign: 'right', cellWidth: 31 }, // S/DAYSHOL
+      5: { halign: 'right', cellWidth: 31 }, // ABSENCE
+      6: { halign: 'right', cellWidth: 35 }, // OTHER EARNINGS
+      7: { halign: 'right', cellWidth: 35 }, // TOTAL EARN.
+      8: { halign: 'right', cellWidth: 31 }, // P.A.Y.E
+      9: { halign: 'right', cellWidth: 31 }, // N.S.S.F
+      10: { halign: 'right', cellWidth: 31 }, // N.H.I.F
+      11: { halign: 'right', cellWidth: 31 }, // SHOPPING
+      12: { halign: 'right', cellWidth: 31 }, // ADVANC
+      13: { halign: 'right', cellWidth: 31 }, // HOUSING
+      14: { halign: 'right', cellWidth: 31 }, // OTHER DED
+      15: { halign: 'right', cellWidth: 31 }, // PENSION
+      16: { halign: 'right', cellWidth: 35 }, // TOTAL DED.
+      17: { halign: 'right', cellWidth: 35 }  // NET PAY
     },
     didDrawPage: (data) => {
-      // footer page count
+      // Add logo to each page
+      if (logoData) {
+        addLogoToCurrentPage(doc, logoData)
+      }
+      // Footer with page number - better positioning
       const pageCount = doc.getNumberOfPages()
-      doc.setFontSize(8)
+      const pageNum = doc.getCurrentPageInfo().pageNumber
+      doc.setFontSize(7)
       doc.setFont('helvetica', 'normal')
-      doc.text(`Page ${doc.getCurrentPageInfo().pageNumber} of ${pageCount}`, doc.internal.pageSize.getWidth() - 60, doc.internal.pageSize.getHeight() - 10)
+      doc.setTextColor(120, 120, 120)
+      const pageText = `Page ${pageNum} of ${pageCount}`
+      doc.text(pageText, doc.internal.pageSize.getWidth() - 50, doc.internal.pageSize.getHeight() - 15)
+      doc.setTextColor(0, 0, 0) // Reset to black
     }
   })
 
-  // Summary breakdown section - matching template format
-  let y2 = doc.lastAutoTable.finalY + 20
+  // Summary breakdown section - improved spacing
+  let y2 = doc.lastAutoTable.finalY + 25
   const pageH = doc.internal.pageSize.getHeight()
   if (y2 > pageH - 200) {
     doc.addPage()
-    y2 = 40
+    // Add logo to new page
+    if (logoData) {
+      addLogoToCurrentPage(doc, logoData)
+    }
+    y2 = 50
   }
+  
+  // Add section header
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.text('SUMMARY BREAKDOWN', 40, y2 - 5)
+  y2 += 5
 
   // Build summary rows matching template format
   // Banks first, then deductions, with amounts in TOTAL EARN. column position (index 7)
@@ -366,13 +584,18 @@ export const generateCompanyPayrollListPDF = ({
     summaryRows.push(row)
   }
 
-  // Add summary table using same structure as main table
+  // Add summary table with improved styling
   autoTable(doc, {
     startY: y2,
     body: summaryRows,
-    styles: { fontSize: 8, cellPadding: 3 },
+    styles: { 
+      fontSize: 7, 
+      cellPadding: 2,
+      lineColor: [220, 220, 220],
+      lineWidth: 0.1
+    },
     columnStyles: {
-      0: { cellWidth: 55, fontStyle: 'bold' },
+      0: { cellWidth: 55, fontStyle: 'bold', halign: 'left' },
       1: { cellWidth: 140 },
       2: { halign: 'right', cellWidth: 60 },
       3: { halign: 'right', cellWidth: 60 },
@@ -390,25 +613,41 @@ export const generateCompanyPayrollListPDF = ({
       15: { halign: 'right', cellWidth: 55 },
       16: { halign: 'right', cellWidth: 65 },
       17: { halign: 'right', cellWidth: 65 }
-    }
+    },
+    theme: 'grid'
   })
 
-  // Add footer with signature lines
-  let footerY = doc.lastAutoTable.finalY + 30
-  if (footerY > pageH - 80) {
+  // Add footer with signature lines - improved spacing
+  let footerY = doc.lastAutoTable.finalY + 35
+  if (footerY > pageH - 100) {
     doc.addPage()
-    footerY = 40
+    // Add logo to new page
+    if (logoData) {
+      addLogoToCurrentPage(doc, logoData)
+    }
+    footerY = 50
   }
+
+  // Add separator line before signatures
+  doc.setDrawColor(200, 200, 200)
+  doc.setLineWidth(0.5)
+  doc.line(40, footerY - 5, doc.internal.pageSize.getWidth() - 40, footerY - 5)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
-  doc.text('Prepared by: ................................', 40, footerY)
-  doc.text('Checked by: ................................', 40, footerY + 15)
-  doc.text('Authorised by: ................................', 40, footerY + 30)
-  doc.text('Authorised by: ................................', 40, footerY + 45)
+  doc.text('Prepared by: ................................', 40, footerY + 5)
+  doc.text('Checked by: ................................', 40, footerY + 20)
+  doc.text('Authorised by: ................................', 40, footerY + 35)
+  doc.text('Authorised by: ................................', 40, footerY + 50)
   
-  // Add date at bottom
-  doc.text(reportDate, 40, doc.internal.pageSize.getHeight() - 20)
+  // Add date at bottom - better positioning
+  doc.setFontSize(8)
+  doc.setTextColor(120, 120, 120)
+  doc.text(reportDate, 40, doc.internal.pageSize.getHeight() - 25)
+  doc.setTextColor(0, 0, 0) // Reset to black
+
+  // Add footer to all pages
+  addFooterToPDF(doc, { hidePageNumber: true }) // Hide page number since it's already added in didDrawPage
 
   const pdfBytes = doc.output('arraybuffer')
   return new Blob([pdfBytes], { type: 'application/pdf' })
@@ -621,12 +860,17 @@ export const generateP9Csv = ({ runs, employees, year }) => {
 export const generatePayslipsPDF = async ({
   companyName,
   companyTaxPin,
+  companyLogoUrl,
   period,
   runs,
   empById,
   deductionsByEmployeeId
 }) => {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
+  
+  // Add company logo (top left) - only on first page
+  await addLogoToPDF(doc, companyLogoUrl)
+  
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   
@@ -649,6 +893,10 @@ export const generatePayslipsPDF = async ({
     // Calculate position (4 payslips per page)
     if (payslipIndex > 0 && payslipIndex % 4 === 0) {
       doc.addPage()
+      // Add logo to new page
+      if (logoData) {
+        addLogoToCurrentPage(doc, logoData)
+      }
     }
     
     const col = payslipIndex % 2
@@ -771,6 +1019,9 @@ export const generatePayslipsPDF = async ({
     payslipIndex++
   }
   
+  // Add footer to all pages
+  addFooterToPDF(doc)
+  
   const pdfBytes = doc.output('arraybuffer')
   return new Blob([pdfBytes], { type: 'application/pdf' })
 }
@@ -778,11 +1029,15 @@ export const generatePayslipsPDF = async ({
 // Banking Report PDF Generator
 export const generateBankingReportPDF = async ({
   companyName,
+  companyLogoUrl,
   period,
   runs,
   empById
 }) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+  
+  // Add company logo (top left)
+  await addLogoToPDF(doc, companyLogoUrl)
   
   // Header
   doc.setFontSize(16)
@@ -812,6 +1067,10 @@ export const generateBankingReportPDF = async ({
   for (const [bankName, items] of bankGroups.entries()) {
     if (y > doc.internal.pageSize.getHeight() - 100) {
       doc.addPage()
+      // Add logo to new page
+      if (logoData) {
+        addLogoToCurrentPage(doc, logoData)
+      }
       y = 40
     }
     
@@ -852,22 +1111,28 @@ export const generateBankingReportPDF = async ({
 // NSSF Report PDF Generator matching template
 export const generateNSSFReportPDF = async ({
   companyName,
+  companyLogoUrl,
   period,
   runs,
   empById
 }) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
   
+  // Add company logo (top left)
+  await addLogoToPDF(doc, companyLogoUrl)
+  
   // Header
+  const headerY = companyLogoUrl ? 50 : 40
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text(companyName || 'COMPANY', 40, 40)
+  doc.text(companyName || 'COMPANY', 40, headerY)
   
   const [year, month] = period.split('-')
   const monthNames = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 
     'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER']
   doc.setFontSize(12)
-  doc.text(`NSSF REPORT FOR ${monthNames[parseInt(month) - 1]} ${year}`, 40, 60)
+  const periodY = companyLogoUrl ? 70 : 60
+  doc.text(`NSSF REPORT FOR ${monthNames[parseInt(month) - 1]} ${year}`, 40, periodY)
   
   const rows = []
   let totalGross = 0
@@ -918,8 +1183,17 @@ export const generateNSSFReportPDF = async ({
       6: { halign: 'right' },
       7: { halign: 'right' }
     },
-    footStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold' }
+    footStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold' },
+    didDrawPage: (data) => {
+      // Add logo to each page
+      if (logoData) {
+        addLogoToCurrentPage(doc, logoData)
+      }
+    }
   })
+  
+  // Add footer to all pages
+  addFooterToPDF(doc)
   
   const pdfBytes = doc.output('arraybuffer')
   return new Blob([pdfBytes], { type: 'application/pdf' })
@@ -928,18 +1202,29 @@ export const generateNSSFReportPDF = async ({
 // P9 Report PDF Generator matching template
 export const generateP9ReportPDF = async ({
   companyName,
+  companyLogoUrl,
   year,
   runs,
   employees
 }) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
   
+  // Load logo once for reuse on all pages
+  const logoData = await loadLogoForPDF(doc, companyLogoUrl)
+  
+  // Add logo to first page
+  if (logoData) {
+    addLogoToCurrentPage(doc, logoData)
+  }
+  
   // Header
+  const headerY = companyLogoUrl ? 50 : 40
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text(companyName || 'COMPANY', 40, 40)
+  doc.text(companyName || 'COMPANY', 40, headerY)
   doc.setFontSize(12)
-  doc.text(`P9 TAX DEDUCTION CARD FOR YEAR ${year}`, 40, 60)
+  const periodY = companyLogoUrl ? 70 : 60
+  doc.text(`P9 TAX DEDUCTION CARD FOR YEAR ${year}`, 40, periodY)
   
   // Group runs by employee
   const byEmp = new Map()
@@ -1002,8 +1287,17 @@ export const generateP9ReportPDF = async ({
       7: { halign: 'right' },
       8: { halign: 'right' },
       9: { halign: 'right' }
+    },
+    didDrawPage: (data) => {
+      // Add logo to each page
+      if (logoData) {
+        addLogoToCurrentPage(doc, logoData)
+      }
     }
   })
+  
+  // Add footer to all pages
+  addFooterToPDF(doc)
   
   const pdfBytes = doc.output('arraybuffer')
   return new Blob([pdfBytes], { type: 'application/pdf' })
@@ -1067,8 +1361,9 @@ export const fetchAttendanceDataForPeriod = async (companyId, period) => {
 }
 
 // Generate Attendance Report PDF
-export const generateAttendanceReportPDF = ({
+export const generateAttendanceReportPDF = async ({
   companyName,
+  companyLogoUrl,
   period,
   attendanceByEmployee,
   startDate,
@@ -1076,15 +1371,25 @@ export const generateAttendanceReportPDF = ({
 }) => {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
 
+  // Load logo once for reuse on all pages
+  const logoData = await loadLogoForPDF(doc, companyLogoUrl)
+  
+  // Add logo to first page
+  if (logoData) {
+    addLogoToCurrentPage(doc, logoData)
+  }
+
   // Header
+  const headerY = companyLogoUrl ? 50 : 40
   doc.setFontSize(16)
   doc.setFont(undefined, 'bold')
-  doc.text(companyName || 'Company', 40, 40)
+  doc.text(companyName || 'Company', 40, headerY)
   
   doc.setFontSize(12)
   doc.setFont(undefined, 'normal')
-  doc.text(`Monthly Attendance Report - ${period}`, 40, 60)
-  doc.text(`Period: ${startDate} to ${endDate}`, 40, 75)
+  const reportY = companyLogoUrl ? 70 : 60
+  doc.text(`Monthly Attendance Report - ${period}`, 40, reportY)
+  doc.text(`Period: ${startDate} to ${endDate}`, 40, reportY + 15)
 
   // Prepare table data
   const rows = []
@@ -1104,8 +1409,9 @@ export const generateAttendanceReportPDF = ({
   // Add totals row
   const totalDays = rows.reduce((sum, row) => sum + parseInt(row[3] || 0), 0)
 
+  const tableStartY = companyLogoUrl ? 100 : 90
   autoTable(doc, {
-    startY: 90,
+    startY: tableStartY,
     head: [['Employee Name', 'Employee ID', 'Department', 'Days Present']],
     body: rows,
     styles: { fontSize: 9 },
@@ -1114,7 +1420,13 @@ export const generateAttendanceReportPDF = ({
       3: { halign: 'right' }
     },
     foot: [['TOTAL', '', '', totalDays.toString()]],
-    footStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold' }
+    footStyles: { fillColor: [245, 245, 245], textColor: 0, fontStyle: 'bold' },
+    didDrawPage: (data) => {
+      // Add logo to each page
+      if (logoData) {
+        addLogoToCurrentPage(doc, logoData)
+      }
+    }
   })
 
   const pdfBytes = doc.output('arraybuffer')
