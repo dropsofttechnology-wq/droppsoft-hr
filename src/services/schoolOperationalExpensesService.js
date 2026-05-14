@@ -127,6 +127,22 @@ export async function getOperationalExpenses(companyId, filters = {}) {
   return res.json()
 }
 
+/**
+ * @param {string} companyId
+ * @param {string} [month] YYYY-MM for paid total (defaults server-side to current month)
+ */
+export async function getOperationalExpensesSummary(companyId, month) {
+  assertLocal()
+  const params = { company_id: companyId }
+  if (month) params.month = month
+  const res = await localApiFetch(`/api/school/operational-expenses/summary${qs(params)}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || 'Failed to load expense summary')
+  }
+  return res.json()
+}
+
 export async function createOperationalExpense(companyId, payload) {
   assertLocal()
   const res = await localApiFetch('/api/school/operational-expenses', {

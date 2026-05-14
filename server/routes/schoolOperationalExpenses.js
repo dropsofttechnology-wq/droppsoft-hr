@@ -74,6 +74,21 @@ export function createSchoolOperationalExpensesRoutes(db) {
     return null
   }
 
+  function tryAudit(req, { companyId, action, entityType, entityId, oldValue, newValue }) {
+    try {
+      const id = randomUUID()
+      const now = new Date().toISOString()
+      const ov = oldValue != null ? String(oldValue).slice(0, 5000) : null
+      const nv = newValue != null ? String(newValue).slice(0, 5000) : null
+      db.prepare(
+        `INSERT INTO audit_log (id, user_id, company_id, action, entity_type, entity_id, old_value, new_value, ip_address, user_agent, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`
+      ).run(id, req.userId, companyId, action, entityType, entityId, ov, nv, now)
+    } catch (err) {
+      console.error('[school operational_expenses audit]', err.message)
+    }
+  }
+
   // --- Categories ---
   r.get('/expense-categories', canView, (req, res) => {
     try {
@@ -288,6 +303,49 @@ export function createSchoolOperationalExpensesRoutes(db) {
     }
   })
 
+  /** Must be registered before `GET /operational-expenses/:id` so `summary` is not captured as an id. */
+  r.get('/operational-expenses/summary', canView, (req, res) => {
+    try {
+      const companyId = requireCompanyId(req, res)
+      if (!companyId) return
+      if (!companyExists(db, companyId)) return res.status(404).json({ error: 'Company not found' })
+      let month = String(req.query.month || '').trim().slice(0, 7)
+      if (!month) {
+        const d = new Date()
+        month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      }
+      if (!/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ error: 'month must be YYYY-MM' })
+      }
+      const draftRow = db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM operational_expenses WHERE company_id = ? AND status = 'draft'`
+        )
+        .get(companyId)
+      const approvedRow = db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM operational_expenses WHERE company_id = ? AND status = 'approved'`
+        )
+        .get(companyId)
+      const paidMonthRow = db
+        .prepare(
+          `SELECT COALESCE(SUM(amount), 0) AS s FROM operational_expenses
+           WHERE company_id = ? AND status = 'paid' AND paid_on IS NOT NULL
+             AND strftime('%Y-%m', paid_on) = ?`
+        )
+        .get(companyId, month)
+      res.json({
+        company_id: companyId,
+        month,
+        draft_count: Number(draftRow?.c) || 0,
+        approved_count: Number(approvedRow?.c) || 0,
+        paid_month_total: Math.round(Number(paidMonthRow?.s || 0) * 100) / 100
+      })
+    } catch (e) {
+      res.status(500).json({ error: e.message })
+    }
+  })
+
   r.get('/operational-expenses/:id', canView, (req, res) => {
     try {
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(req.params.id)
@@ -358,6 +416,18 @@ export function createSchoolOperationalExpensesRoutes(db) {
         now
       )
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
+      tryAudit(req, {
+        companyId,
+        action: 'operational_expense_create',
+        entityType: 'operational_expenses',
+        entityId: id,
+        newValue: JSON.stringify({
+          status: row.status,
+          amount: row.amount,
+          description: row.description,
+          incurred_on: row.incurred_on
+        })
+      })
       res.status(201).json(mapOperationalExpenseRow(row))
     } catch (e) {
       res.status(400).json({ error: e.message })
@@ -449,13 +519,23 @@ export function createSchoolOperationalExpensesRoutes(db) {
         id
       )
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
+      tryAudit(req, {
+        companyId,
+        action: 'operational_expense_update',
+        entityType: 'operational_expenses',
+        entityId: id,
+        oldValue: JSON.stringify({
+          amount: existing.amount,
+          description: existing.description,
+          incurred_on: existing.incurred_on
+        }),
+        newValue: JSON.stringify({
+          amount: row.amount,
+          description: row.description,
+          incurred_on: row.incurred_on
+        })
+      })
       res.json(mapOperationalExpenseRow(row))
-    } catch (e) {
-      res.status(400).json({ error: e.message })
-    }
-  })
-
-  r.delete('/operational-expenses/:id', canEdit, (req, res) => {
     try {
       const id = req.params.id
       const existing = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
@@ -463,6 +543,17 @@ export function createSchoolOperationalExpensesRoutes(db) {
       if (String(existing.status) !== 'draft') {
         return res.status(400).json({ error: 'Only draft expenses can be deleted' })
       }
+      tryAudit(req, {
+        companyId: existing.company_id,
+        action: 'operational_expense_delete',
+        entityType: 'operational_expenses',
+        entityId: id,
+        oldValue: JSON.stringify({
+          status: existing.status,
+          amount: existing.amount,
+          description: existing.description
+        })
+      })
       db.prepare('DELETE FROM operational_expenses WHERE id = ?').run(id)
       res.json({ ok: true })
     } catch (e) {
@@ -486,6 +577,14 @@ export function createSchoolOperationalExpensesRoutes(db) {
          rejected_reason = NULL, updated_at = ? WHERE id = ?`
       ).run(req.userId, now, now, id)
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
+      tryAudit(req, {
+        companyId: existing.company_id,
+        action: 'operational_expense_approve',
+        entityType: 'operational_expenses',
+        entityId: id,
+        oldValue: JSON.stringify({ status: existing.status }),
+        newValue: JSON.stringify({ status: row.status, approved_by: row.approved_by })
+      })
       res.json(mapOperationalExpenseRow(row))
     } catch (e) {
       res.status(400).json({ error: e.message })
@@ -507,6 +606,14 @@ export function createSchoolOperationalExpensesRoutes(db) {
         `UPDATE operational_expenses SET status = 'rejected', rejected_reason = ?, approved_by = ?, approved_at = ?, updated_at = ? WHERE id = ?`
       ).run(reason, req.userId, now, now, id)
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
+      tryAudit(req, {
+        companyId: existing.company_id,
+        action: 'operational_expense_reject',
+        entityType: 'operational_expenses',
+        entityId: id,
+        oldValue: JSON.stringify({ status: existing.status }),
+        newValue: JSON.stringify({ status: 'rejected', rejected_reason: reason })
+      })
       res.json(mapOperationalExpenseRow(row))
     } catch (e) {
       res.status(400).json({ error: e.message })
@@ -534,6 +641,14 @@ export function createSchoolOperationalExpensesRoutes(db) {
         `UPDATE operational_expenses SET status = 'paid', paid_on = ?, payment_method = ?, updated_at = ? WHERE id = ?`
       ).run(paidOn, pm, now, id)
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
+      tryAudit(req, {
+        companyId: existing.company_id,
+        action: 'operational_expense_mark_paid',
+        entityType: 'operational_expenses',
+        entityId: id,
+        oldValue: JSON.stringify({ status: existing.status, paid_on: existing.paid_on }),
+        newValue: JSON.stringify({ status: 'paid', paid_on: paidOn, payment_method: pm })
+      })
       res.json(mapOperationalExpenseRow(row))
     } catch (e) {
       res.status(400).json({ error: e.message })
@@ -556,6 +671,14 @@ export function createSchoolOperationalExpensesRoutes(db) {
         `UPDATE operational_expenses SET status = 'void', void_reason = ?, updated_at = ? WHERE id = ?`
       ).run(voidReason, now, id)
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
+      tryAudit(req, {
+        companyId: existing.company_id,
+        action: 'operational_expense_void',
+        entityType: 'operational_expenses',
+        entityId: id,
+        oldValue: JSON.stringify({ status: existing.status, amount: existing.amount }),
+        newValue: JSON.stringify({ status: 'void', void_reason: voidReason })
+      })
       res.json(mapOperationalExpenseRow(row))
     } catch (e) {
       res.status(400).json({ error: e.message })
