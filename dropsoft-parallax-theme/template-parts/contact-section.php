@@ -1,13 +1,20 @@
 <?php
 /**
- * Contact form & sales details (used on Contact page).
+ * Contact form & contact details (used on Contact page).
  *
  * @package Dropsoft_Corporate
  */
 
 defined('ABSPATH') || exit;
 
-$sales_email     = get_theme_mod('dropsoft_sales_email', '');
+$contact_primary = function_exists('dropsoft_corporate_get_contact_display_email')
+	? dropsoft_corporate_get_contact_display_email()
+	: 'info@dropsoft.co.ke';
+$contact_phone   = trim((string) get_theme_mod('dropsoft_contact_phone', ''));
+$contact_address = trim((string) get_theme_mod('dropsoft_contact_address', ''));
+$sales_email     = trim((string) get_theme_mod('dropsoft_sales_email', ''));
+$show_second     = ($sales_email !== '' && is_email($sales_email) && strtolower($sales_email) !== strtolower($contact_primary));
+
 $contact_message = isset($_GET['message']) ? sanitize_text_field(wp_unslash($_GET['message'])) : '';
 ?>
 <section id="contact" class="ds-section ds-contact">
@@ -17,16 +24,42 @@ $contact_message = isset($_GET['message']) ? sanitize_text_field(wp_unslash($_GE
 			<p class="ds-section__lead" style="margin-bottom: 16px;">
 				<?php esc_html_e('Request a demo, a Dropsoft HR licence quote, ERP rollout planning, or a bespoke build. Serious enquiries are triaged within one business day — include headcount, branches, and whether you need offline-first deployment.', 'dropsoft-corporate'); ?>
 			</p>
-			<p style="color: var(--ds-slate-400); margin: 0;">
-				<strong style="color: var(--ds-white);"><?php esc_html_e('WordPress admin email:', 'dropsoft-corporate'); ?></strong>
-				<?php echo esc_html(get_option('admin_email')); ?>
-			</p>
-			<?php if ($sales_email && is_email($sales_email)) : ?>
-				<p style="color: var(--ds-slate-400); margin-top: 12px;">
-					<strong style="color: var(--ds-white);"><?php esc_html_e('Sales:', 'dropsoft-corporate'); ?></strong>
-					<a href="mailto:<?php echo esc_attr($sales_email); ?>"><?php echo esc_html($sales_email); ?></a>
+
+			<div class="ds-contact-details">
+				<p class="ds-contact-details__row">
+					<strong class="ds-contact-details__label"><?php esc_html_e('Email', 'dropsoft-corporate'); ?></strong>
+					<a class="ds-contact-details__value" href="mailto:<?php echo esc_attr($contact_primary); ?>"><?php echo esc_html($contact_primary); ?></a>
 				</p>
-			<?php endif; ?>
+				<?php if ($show_second) : ?>
+					<p class="ds-contact-details__row">
+						<strong class="ds-contact-details__label"><?php esc_html_e('Also reach', 'dropsoft-corporate'); ?></strong>
+						<a class="ds-contact-details__value" href="mailto:<?php echo esc_attr($sales_email); ?>"><?php echo esc_html($sales_email); ?></a>
+					</p>
+				<?php endif; ?>
+				<?php if ($contact_phone !== '') : ?>
+					<?php
+					$tel_href = preg_replace('/[^\d+]/', '', $contact_phone);
+					?>
+					<p class="ds-contact-details__row">
+						<strong class="ds-contact-details__label"><?php esc_html_e('Phone', 'dropsoft-corporate'); ?></strong>
+						<?php if ($tel_href !== '') : ?>
+							<a class="ds-contact-details__value" href="tel:<?php echo esc_attr($tel_href); ?>"><?php echo esc_html($contact_phone); ?></a>
+						<?php else : ?>
+							<span class="ds-contact-details__value"><?php echo esc_html($contact_phone); ?></span>
+						<?php endif; ?>
+					</p>
+				<?php endif; ?>
+				<?php if ($contact_address !== '') : ?>
+					<div class="ds-contact-details__row ds-contact-details__row--block">
+						<strong class="ds-contact-details__label"><?php esc_html_e('Location & hours', 'dropsoft-corporate'); ?></strong>
+						<span class="ds-contact-details__value ds-contact-details__value--multiline"><?php echo nl2br(esc_html($contact_address)); ?></span>
+					</div>
+				<?php endif; ?>
+			</div>
+
+			<p class="ds-contact-details__hint">
+				<?php esc_html_e('Edit these details under Appearance → Customize → Dropsoft — Contact page.', 'dropsoft-corporate'); ?>
+			</p>
 		</div>
 
 		<div class="ds-reveal">

@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('DROPSOFT_CORPORATE_VERSION', '1.2.2');
+define('DROPSOFT_CORPORATE_VERSION', '1.2.3');
 
 require_once get_template_directory() . '/inc/pricing-data.php';
 
@@ -285,7 +285,10 @@ function dropsoft_corporate_handle_contact_form() {
         exit;
     }
 
-    $to      = get_option('admin_email');
+    $to = dropsoft_corporate_get_contact_form_recipient();
+    if ($to === '') {
+        $to = dropsoft_corporate_get_contact_display_email();
+    }
     $subject = sprintf('[%s] %s', wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES), __('Product / custom dev inquiry', 'dropsoft-corporate'));
     $body    = sprintf(
         "Name: %s\nEmail: %s\nPhone: %s\nInterest: %s\n\nMessage:\n%s\n",
@@ -306,6 +309,57 @@ function dropsoft_corporate_handle_contact_form() {
 }
 add_action('admin_post_nopriv_dropsoft_contact', 'dropsoft_corporate_handle_contact_form');
 add_action('admin_post_dropsoft_contact', 'dropsoft_corporate_handle_contact_form');
+
+/**
+ * Primary contact email for display (Customizer).
+ *
+ * @return string
+ */
+function dropsoft_corporate_get_contact_display_email() {
+    $e = trim((string) get_theme_mod('dropsoft_contact_email', 'info@dropsoft.co.ke'));
+    if ($e === '') {
+        $e = 'info@dropsoft.co.ke';
+    }
+    $e = sanitize_email($e);
+    if ($e && is_email($e)) {
+        return strtolower($e);
+    }
+    $legacy = trim((string) get_theme_mod('dropsoft_sales_email', ''));
+    if ($legacy !== '' && is_email($legacy)) {
+        return strtolower($legacy);
+    }
+    return 'info@dropsoft.co.ke';
+}
+
+/**
+ * Where contact form submissions are delivered (Customizer).
+ *
+ * @return string Valid email or empty (caller may fall back to admin_email).
+ */
+function dropsoft_corporate_get_contact_form_recipient() {
+    $direct = trim((string) get_theme_mod('dropsoft_contact_form_recipient', ''));
+    if ($direct !== '' && is_email($direct)) {
+        return $direct;
+    }
+    $primary = trim((string) get_theme_mod('dropsoft_contact_email', 'info@dropsoft.co.ke'));
+    if ($primary !== '' && is_email($primary)) {
+        return $primary;
+    }
+    $legacy = trim((string) get_theme_mod('dropsoft_sales_email', ''));
+    if ($legacy !== '' && is_email($legacy)) {
+        return $legacy;
+    }
+    return '';
+}
+
+/**
+ * @param mixed $value Raw email.
+ * @return string
+ */
+function dropsoft_corporate_sanitize_contact_email_setting($value) {
+    $v = sanitize_email((string) $value);
+    return $v ? strtolower($v) : '';
+}
 
 /**
  * Find a published page by slug (for multi-page marketing URLs).
@@ -890,6 +944,100 @@ function dropsoft_corporate_customize_register($wp_customize) {
     }
 
     $wp_customize->add_section(
+        'dropsoft_contact_page',
+        array(
+            'title'       => __('Dropsoft — Contact page', 'dropsoft-corporate'),
+            'description' => __('These details appear on the Contact page. Form messages are sent to the delivery address below (defaults to the main contact email).', 'dropsoft-corporate'),
+            'priority'    => 34,
+        )
+    );
+
+    $wp_customize->add_setting(
+        'dropsoft_contact_email',
+        array(
+            'default'           => 'info@dropsoft.co.ke',
+            'sanitize_callback' => 'dropsoft_corporate_sanitize_contact_email_setting',
+        )
+    );
+    $wp_customize->add_control(
+        'dropsoft_contact_email',
+        array(
+            'label'       => __('Main contact email', 'dropsoft-corporate'),
+            'description' => __('Shown on the Contact page and used for the form if no separate delivery address is set.', 'dropsoft-corporate'),
+            'section'     => 'dropsoft_contact_page',
+            'type'        => 'email',
+        )
+    );
+
+    $wp_customize->add_setting(
+        'dropsoft_contact_phone',
+        array(
+            'default'           => '',
+            'sanitize_callback' => 'sanitize_text_field',
+        )
+    );
+    $wp_customize->add_control(
+        'dropsoft_contact_phone',
+        array(
+            'label'       => __('Phone', 'dropsoft-corporate'),
+            'description' => __('e.g. +254 700 000000 — optional.', 'dropsoft-corporate'),
+            'section'     => 'dropsoft_contact_page',
+            'type'        => 'text',
+        )
+    );
+
+    $wp_customize->add_setting(
+        'dropsoft_contact_address',
+        array(
+            'default'           => '',
+            'sanitize_callback' => 'sanitize_textarea_field',
+        )
+    );
+    $wp_customize->add_control(
+        'dropsoft_contact_address',
+        array(
+            'label'       => __('Address / office hours (optional)', 'dropsoft-corporate'),
+            'description' => __('Shown under the phone line. Plain text; line breaks are kept.', 'dropsoft-corporate'),
+            'section'     => 'dropsoft_contact_page',
+            'type'        => 'textarea',
+        )
+    );
+
+    $wp_customize->add_setting(
+        'dropsoft_contact_form_recipient',
+        array(
+            'default'           => '',
+            'sanitize_callback' => 'dropsoft_corporate_sanitize_contact_email_setting',
+        )
+    );
+    $wp_customize->add_control(
+        'dropsoft_contact_form_recipient',
+        array(
+            'label'       => __('Form delivery email (optional)', 'dropsoft-corporate'),
+            'description' => __('Inquiries from the contact form go here. Leave blank to use the main contact email above.', 'dropsoft-corporate'),
+            'section'     => 'dropsoft_contact_page',
+            'type'        => 'email',
+        )
+    );
+
+    $wp_customize->add_setting(
+        'dropsoft_sales_email',
+        array(
+            'default'           => '',
+            'sanitize_callback' => 'sanitize_email',
+        )
+    );
+    $wp_customize->add_control(
+        'dropsoft_sales_email',
+        array(
+            'label'       => __('Second email (optional)', 'dropsoft-corporate'),
+            'description' => __('Shown as an extra line on the Contact page if different from the main contact email. Leave blank to hide.', 'dropsoft-corporate'),
+            'section'     => 'dropsoft_contact_page',
+            'type'        => 'email',
+        )
+    );
+
+    $wp_customize->add_section(
         'dropsoft_corporate',
         array(
             'title'    => __('Dropsoft — Homepage', 'dropsoft-corporate'),
@@ -942,23 +1090,6 @@ function dropsoft_corporate_customize_register($wp_customize) {
             'label'   => __('Hero lead paragraph', 'dropsoft-corporate'),
             'section' => 'dropsoft_corporate',
             'type'    => 'textarea',
-        )
-    );
-
-    $wp_customize->add_setting(
-        'dropsoft_sales_email',
-        array(
-            'default'           => '',
-            'sanitize_callback' => 'sanitize_email',
-        )
-    );
-    $wp_customize->add_control(
-        'dropsoft_sales_email',
-        array(
-            'label'       => __('Sales email (shown on site; contact form still uses WP admin email)', 'dropsoft-corporate'),
-            'description' => __('Leave blank to hide the extra sales line.', 'dropsoft-corporate'),
-            'section'     => 'dropsoft_corporate',
-            'type'        => 'email',
         )
     );
 

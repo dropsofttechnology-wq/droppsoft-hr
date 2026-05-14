@@ -4,7 +4,7 @@ Theme URI: https://dropsofttechnologies.example
 Author: Dropsoft Technologies Ltd
 Author URI: https://dropsofttechnologies.example
 Description: High-performance corporate theme with parallax hero, flagship product showcase, pricing, and contact — for Dropsoft Technologies Ltd. Elementor-ready (Theme Builder locations, full-width page template).
-Version: 1.2.2
+Version: 1.2.3
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
@@ -1823,6 +1823,62 @@ img {
    ------------------------------------------------------------------------- */
 .ds-contact {
   border-top: 1px solid var(--ds-border);
+}
+
+.ds-contact-details {
+  margin: 20px 0 0;
+  padding: 20px 22px;
+  border-radius: var(--ds-radius);
+  border: 1px solid var(--ds-border);
+  background: rgba(15, 31, 58, 0.65);
+}
+
+.ds-contact-details__row {
+  margin: 0 0 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: baseline;
+  color: var(--ds-slate-300);
+}
+
+.ds-contact-details__row:last-child {
+  margin-bottom: 0;
+}
+
+.ds-contact-details__row--block {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ds-contact-details__label {
+  color: var(--ds-white);
+  min-width: 7.5rem;
+  font-size: 0.88rem;
+}
+
+.ds-contact-details__value {
+  color: var(--ds-accent-strong);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.ds-contact-details__value:hover,
+.ds-contact-details__value:focus-visible {
+  color: var(--ds-white);
+}
+
+.ds-contact-details__value--multiline {
+  color: var(--ds-slate-300);
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.ds-contact-details__hint {
+  margin: 16px 0 0;
+  font-size: 0.8rem;
+  color: var(--ds-slate-400);
+  line-height: 1.45;
 }
 
 .ds-contact__grid {
