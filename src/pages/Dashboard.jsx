@@ -535,10 +535,19 @@ const Dashboard = () => {
                     <span className="school-expense-icon" aria-hidden="true">
                       🏫
                     </span>
-                    <strong>Draft expenses</strong>
+                    <strong>Expense queue</strong>
                   </div>
-                  <div className="school-expense-stat">{expenseSummary.draft_count}</div>
-                  <div className="school-expense-meta">Awaiting approval</div>
+                  <div className="school-expense-queue">
+                    <div className="school-expense-queue-row">
+                      <span>Drafts</span>
+                      <strong>{expenseSummary.draft_count}</strong>
+                    </div>
+                    <div className="school-expense-queue-row">
+                      <span>Approved, unpaid</span>
+                      <strong>{expenseSummary.approved_count ?? 0}</strong>
+                    </div>
+                  </div>
+                  <div className="school-expense-meta">Open list to approve or mark paid</div>
                 </button>
               )}
               {hasPermission(user, 'operational_expenses') && (

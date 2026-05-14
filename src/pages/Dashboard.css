@@ -803,3 +803,21 @@
   font-size: 0.85rem;
   opacity: 0.92;
 }
+
+.school-expense-queue {
+  margin: 0.35rem 0 0.15rem;
+}
+
+.school-expense-queue-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.95rem;
+  padding: 0.2rem 0;
+}
+
+.school-expense-queue-row strong {
+  font-size: 1.35rem;
+  font-weight: 700;
+}

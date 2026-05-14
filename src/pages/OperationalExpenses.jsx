@@ -84,6 +84,7 @@ const OperationalExpenses = () => {
   const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [expenseSearch, setExpenseSearch] = useState('')
 
   const [catForm, setCatForm] = useState({ name: '', code: '' })
   const [editingCat, setEditingCat] = useState(null)
@@ -150,6 +151,31 @@ const OperationalExpenses = () => {
   const supplierName = (id) => (!id ? '—' : suppliers.find((s) => s.$id === id)?.name || '—')
   const employeeName = (id) => (!id ? '—' : employees.find((e) => e.$id === id)?.name || '—')
 
+  const filteredExpenses = useMemo(() => {
+    const q = expenseSearch.trim().toLowerCase()
+    if (!q) return expenses
+    return expenses.filter((row) => {
+      const desc = String(row.description || '').toLowerCase()
+      const ref = String(row.reference || '').toLowerCase()
+      const st = String(row.status || '').toLowerCase()
+      const idFrag = String(row.$id || '').toLowerCase()
+      const notes = String(row.notes || '').toLowerCase()
+      const cat = String(categoryName(row.category_id)).toLowerCase()
+      const sup = String(supplierName(row.supplier_id)).toLowerCase()
+      const emp = String(employeeName(row.linked_employee_id)).toLowerCase()
+      return (
+        desc.includes(q) ||
+        ref.includes(q) ||
+        st.includes(q) ||
+        idFrag.includes(q) ||
+        notes.includes(q) ||
+        cat.includes(q) ||
+        sup.includes(q) ||
+        emp.includes(q)
+      )
+    })
+  }, [expenses, expenseSearch, categories, suppliers, employees])
+
   const sortedCategories = useMemo(
     () => [...categories].sort((a, b) => String(a.name).localeCompare(String(b.name))),
     [categories]
@@ -184,8 +210,12 @@ const OperationalExpenses = () => {
   }
 
   const handleExportCsv = () => {
-    if (!expenses.length) {
-      toast.error('No rows to export for the current filter')
+    if (!filteredExpenses.length) {
+      if (!expenses.length) {
+        toast.error('No rows to export for the current filter')
+      } else {
+        toast.error('No rows match your search — clear the search box or change filters')
+      }
       return
     }
     const headers = [
@@ -206,7 +236,7 @@ const OperationalExpenses = () => {
       'void_reason'
     ]
     const lines = [headers.join(',')]
-    for (const row of expenses) {
+    for (const row of filteredExpenses) {
       lines.push(
         [
           escapeCsvCell(String(row.incurred_on || '').slice(0, 10)),
@@ -228,7 +258,8 @@ const OperationalExpenses = () => {
       )
     }
     const stamp = format(new Date(), 'yyyy-MM-dd')
-    const fname = `operational-expenses-${String(statusFilter)}-${stamp}.csv`
+    const searchTag = expenseSearch.trim() ? '-search' : ''
+    const fname = `operational-expenses-${String(statusFilter)}${searchTag}-${stamp}.csv`
     const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -552,6 +583,16 @@ const OperationalExpenses = () => {
               <option value="void">Void</option>
             </select>
           </label>
+          <label className="op-ex-search">
+            Search
+            <input
+              type="search"
+              placeholder="Description, reference, category, supplier…"
+              value={expenseSearch}
+              onChange={(e) => setExpenseSearch(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
           {(canEdit || canApprove) && (
             <button type="button" className="btn-secondary op-ex-export-btn" onClick={handleExportCsv}>
               Export CSV
@@ -716,7 +757,7 @@ const OperationalExpenses = () => {
                 </tr>
               </thead>
               <tbody>
-                {expenses.map((row) => (
+                {filteredExpenses.map((row) => (
                   <tr key={row.$id}>
                     <td>{String(row.incurred_on || '').slice(0, 10)}</td>
                     <td>{row.description}</td>
@@ -791,7 +832,13 @@ const OperationalExpenses = () => {
                 ))}
               </tbody>
             </table>
-            {!expenses.length && <p className="muted">No expenses for this filter.</p>}
+            {!loading && !filteredExpenses.length && (
+              <p className="muted">
+                {expenses.length && expenseSearch.trim()
+                  ? 'No rows match your search.'
+                  : 'No expenses for this filter.'}
+              </p>
+            )}
           </div>
         )}
       </section>

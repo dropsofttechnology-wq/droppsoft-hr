@@ -119,6 +119,22 @@
   border-radius: 6px;
 }
 
+.op-ex-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  flex: 1 1 200px;
+  min-width: min(100%, 220px);
+}
+
+.op-ex-search input {
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #cfd4d9);
+  width: 100%;
+}
+
 .op-ex-expense-form .op-ex-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
