@@ -33,6 +33,23 @@
   font-size: 1rem;
 }
 
+.op-ex-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.op-ex-section-head h2 {
+  margin: 0;
+}
+
+.op-ex-seed-btn {
+  white-space: nowrap;
+}
+
 .op-ex-inline-form {
   display: flex;
   flex-wrap: wrap;
@@ -89,6 +106,11 @@
 
 .op-ex-toolbar {
   margin-bottom: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .op-ex-toolbar select {

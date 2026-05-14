@@ -37,6 +37,27 @@ const PAYMENT_METHODS = [
   { value: 'other', label: 'Other' }
 ]
 
+/** Starter list aligned with school ops blueprint; skips names already present. */
+const SUGGESTED_EXPENSE_CATEGORIES = [
+  { name: 'Utilities', code: 'UTIL' },
+  { name: 'Teaching supplies', code: 'SUPPLY' },
+  { name: 'Repairs & maintenance', code: 'MAINT' },
+  { name: 'Transport & trips', code: 'TRANS' },
+  { name: 'Exams & registrations', code: 'EXAM' },
+  { name: 'Insurance & licences', code: 'INS' },
+  { name: 'Catering & events', code: 'EVENT' },
+  { name: 'Professional services', code: 'PROF' },
+  { name: 'Bank charges', code: 'BANK' },
+  { name: 'Assets / capex', code: 'CAPEX' },
+  { name: 'Petty cash & misc', code: 'MISC' }
+]
+
+function escapeCsvCell(value) {
+  const t = String(value ?? '')
+  if (/[",\n\r]/.test(t)) return `"${t.replace(/"/g, '""')}"`
+  return t
+}
+
 const emptyExpense = {
   category_id: '',
   supplier_id: '',
@@ -84,6 +105,7 @@ const OperationalExpenses = () => {
   const [paidModal, setPaidModal] = useState(null)
   const [paidOn, setPaidOn] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [paidMethod, setPaidMethod] = useState('')
+  const [seedingCategories, setSeedingCategories] = useState(false)
 
   const companyId = currentCompany?.$id
 
@@ -132,6 +154,93 @@ const OperationalExpenses = () => {
     () => [...categories].sort((a, b) => String(a.name).localeCompare(String(b.name))),
     [categories]
   )
+
+  const handleSeedSuggestedCategories = async () => {
+    if (!companyId) return
+    const existing = new Set(
+      categories.map((c) => String(c.name || '').trim().toLowerCase()).filter(Boolean)
+    )
+    const toAdd = SUGGESTED_EXPENSE_CATEGORIES.filter(
+      (row) => !existing.has(String(row.name).trim().toLowerCase())
+    )
+    if (!toAdd.length) {
+      toast.success('All suggested categories are already present')
+      return
+    }
+    try {
+      setSeedingCategories(true)
+      let added = 0
+      for (const row of toAdd) {
+        await createExpenseCategory(companyId, { name: row.name, code: row.code })
+        added += 1
+      }
+      toast.success(`Added ${added} categor${added === 1 ? 'y' : 'ies'}`)
+      await loadAll()
+    } catch (err) {
+      toast.error(err.message || 'Could not add categories')
+    } finally {
+      setSeedingCategories(false)
+    }
+  }
+
+  const handleExportCsv = () => {
+    if (!expenses.length) {
+      toast.error('No rows to export for the current filter')
+      return
+    }
+    const headers = [
+      'incurred_on',
+      'description',
+      'category',
+      'supplier',
+      'staff',
+      'amount',
+      'currency',
+      'tax_amount',
+      'status',
+      'paid_on',
+      'payment_method',
+      'reference',
+      'notes',
+      'rejected_reason',
+      'void_reason'
+    ]
+    const lines = [headers.join(',')]
+    for (const row of expenses) {
+      lines.push(
+        [
+          escapeCsvCell(String(row.incurred_on || '').slice(0, 10)),
+          escapeCsvCell(row.description),
+          escapeCsvCell(categoryName(row.category_id)),
+          escapeCsvCell(supplierName(row.supplier_id)),
+          escapeCsvCell(employeeName(row.linked_employee_id)),
+          escapeCsvCell(row.amount),
+          escapeCsvCell(row.currency),
+          escapeCsvCell(row.tax_amount != null ? row.tax_amount : ''),
+          escapeCsvCell(row.status),
+          escapeCsvCell(row.paid_on ? String(row.paid_on).slice(0, 10) : ''),
+          escapeCsvCell(row.payment_method),
+          escapeCsvCell(row.reference),
+          escapeCsvCell(row.notes),
+          escapeCsvCell(row.rejected_reason),
+          escapeCsvCell(row.void_reason)
+        ].join(',')
+      )
+    }
+    const stamp = format(new Date(), 'yyyy-MM-dd')
+    const fname = `operational-expenses-${String(statusFilter)}-${stamp}.csv`
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fname
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success('CSV downloaded')
+  }
 
   const handleSaveCategory = async (e) => {
     e.preventDefault()
@@ -289,7 +398,17 @@ const OperationalExpenses = () => {
 
       {canEdit && (
         <section className="op-ex-card" aria-labelledby="cat-heading">
-          <h2 id="cat-heading">Categories</h2>
+          <div className="op-ex-section-head">
+            <h2 id="cat-heading">Categories</h2>
+            <button
+              type="button"
+              className="btn-secondary op-ex-seed-btn"
+              disabled={seedingCategories}
+              onClick={handleSeedSuggestedCategories}
+            >
+              {seedingCategories ? 'Adding…' : 'Add suggested categories'}
+            </button>
+          </div>
           <form className="op-ex-inline-form" onSubmit={handleSaveCategory}>
             <input
               placeholder="Name"
@@ -433,6 +552,11 @@ const OperationalExpenses = () => {
               <option value="void">Void</option>
             </select>
           </label>
+          {(canEdit || canApprove) && (
+            <button type="button" className="btn-secondary op-ex-export-btn" onClick={handleExportCsv}>
+              Export CSV
+            </button>
+          )}
         </div>
 
         {canEdit && (

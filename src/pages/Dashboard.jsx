@@ -31,6 +31,7 @@ const Dashboard = () => {
   const [pendingAdvances, setPendingAdvances] = useState([])
   const [pendingShoppings, setPendingShoppings] = useState([])
   const [expenseSummary, setExpenseSummary] = useState(null)
+  const [expenseSummaryMonth, setExpenseSummaryMonth] = useState(() => format(new Date(), 'yyyy-MM'))
   const [approvalModal, setApprovalModal] = useState(null)
   const [busyActionKey, setBusyActionKey] = useState('')
   const [leavePage, setLeavePage] = useState(1)
@@ -68,7 +69,7 @@ const Dashboard = () => {
     } else {
       setLoading(false)
     }
-  }, [currentCompany, canApprove, canApproveShopping, user])
+  }, [currentCompany, canApprove, canApproveShopping, user, expenseSummaryMonth])
 
   const loadStats = async () => {
     try {
@@ -105,7 +106,7 @@ const Dashboard = () => {
           hasPermission(user, 'operational_expenses_approval'))
       ) {
         try {
-          const s = await getOperationalExpensesSummary(currentCompany.$id)
+          const s = await getOperationalExpensesSummary(currentCompany.$id, expenseSummaryMonth)
           setExpenseSummary(s)
         } catch {
           setExpenseSummary(null)
@@ -507,10 +508,21 @@ const Dashboard = () => {
         (hasPermission(user, 'operational_expenses') ||
           hasPermission(user, 'operational_expenses_approval')) && (
           <div className="dashboard-section school-expense-summary-section">
-            <h2>School operational spend</h2>
+            <div className="school-expense-summary-heading">
+              <h2>School operational spend</h2>
+              <label className="school-expense-month-label">
+                Month (paid total)
+                <input
+                  type="month"
+                  value={expenseSummaryMonth}
+                  onChange={(e) => setExpenseSummaryMonth(e.target.value)}
+                />
+              </label>
+            </div>
             <p className="dashboard-section-lead">
               Track institutional costs separately from payroll. Open the expenses page to add drafts,
-              approve, and mark as paid.
+              approve, and mark as paid. <strong>Draft count</strong> is all outstanding drafts;{' '}
+              <strong>Paid total</strong> uses the month you select.
             </p>
             <div className="school-expense-summary-grid">
               {hasPermission(user, 'operational_expenses_approval') && (
@@ -540,7 +552,7 @@ const Dashboard = () => {
                   <div className="school-expense-stat">
                     {Number(expenseSummary.paid_month_total || 0).toLocaleString()}
                   </div>
-                  <div className="school-expense-meta">{expenseSummary.month} (marked paid)</div>
+                  <div className="school-expense-meta">{expenseSummary.month} (paid date)</div>
                 </div>
               )}
             </div>

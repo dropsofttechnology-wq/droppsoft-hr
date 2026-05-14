@@ -712,6 +712,35 @@
 }
 
 /* School operational expenses (local API) */
+.school-expense-summary-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: 0.25rem;
+}
+
+.school-expense-summary-heading h2 {
+  margin: 0;
+}
+
+.school-expense-month-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary, #5c6570);
+}
+
+.school-expense-month-label input[type='month'] {
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border-color, #cfd4d9);
+  font: inherit;
+}
+
 .school-expense-summary-section .dashboard-section-lead {
   margin: 0 0 var(--spacing-md);
   color: var(--text-secondary, #5c6570);
