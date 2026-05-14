@@ -4,7 +4,7 @@ Theme URI: https://dropsofttechnologies.example
 Author: Dropsoft Technologies Ltd
 Author URI: https://dropsofttechnologies.example
 Description: High-performance corporate theme with parallax hero, flagship product showcase, pricing, and contact — for Dropsoft Technologies Ltd. Elementor-ready (Theme Builder locations, full-width page template).
-Version: 1.2.1
+Version: 1.2.2
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
@@ -66,6 +66,78 @@ body {
   background-color: transparent;
   -webkit-font-smoothing: antialiased;
   isolation: isolate;
+  text-rendering: optimizeLegibility;
+}
+
+@media (max-width: 900px) {
+  body {
+    font-size: 1.0625rem;
+    line-height: 1.62;
+    color: #e2e8f0;
+  }
+
+  .ds-section__title,
+  .ds-page-intro__title,
+  .ds-standard-page__title,
+  .ds-blog-index__title {
+    color: var(--ds-white);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  }
+
+  .ds-section__lead,
+  .ds-page-intro__lead,
+  .ds-hero__lead,
+  .ds-hero__sublead {
+    color: #cbd5e1;
+  }
+
+  .ds-section {
+    background: rgba(10, 22, 40, 0.78);
+  }
+
+  .ds-hero {
+    background: linear-gradient(
+      180deg,
+      rgba(10, 22, 40, 0.88) 0%,
+      rgba(10, 22, 40, 0.55) 55%,
+      rgba(10, 22, 40, 0.82) 100%
+    );
+  }
+
+  .site-header {
+    background: linear-gradient(180deg, rgba(10, 22, 40, 0.98) 0%, rgba(10, 22, 40, 0.92) 100%);
+  }
+
+  .ds-product-card,
+  .ds-hub-card,
+  .ds-feature-tile,
+  .ds-pricing-table-wrap,
+  .ds-slideshow__frame {
+    background: rgba(15, 31, 58, 0.92);
+  }
+
+  .ds-tech-edge,
+  .ds-trusted-marquee,
+  .ds-slideshow,
+  .ds-about,
+  .ds-hub,
+  .ds-home-overview,
+  .ds-solutions-intro {
+    background: rgba(10, 22, 40, 0.76);
+  }
+
+  .ds-marketing-page {
+    background: rgba(10, 22, 40, 0.82);
+  }
+
+  .ds-standard-page,
+  .ds-blog-index {
+    background: rgba(10, 22, 40, 0.88);
+  }
+
+  .site-footer {
+    background: rgba(10, 22, 40, 0.96);
+  }
 }
 
 /* Full-viewport circuit background (image + animated canvas traces) */
@@ -83,8 +155,21 @@ body {
   background-position: center center;
   background-size: cover;
   background-repeat: no-repeat;
-  opacity: 0.4;
-  filter: saturate(1.08) contrast(1.05);
+  opacity: 0.32;
+  filter: saturate(1.05) contrast(1.04);
+}
+
+/* Darkens decorative image so foreground text stays readable */
+.ds-circuit-bg__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 22, 40, 0.72) 0%,
+    rgba(10, 22, 40, 0.5) 45%,
+    rgba(10, 22, 40, 0.78) 100%
+  );
 }
 
 .ds-circuit-bg__canvas {
@@ -93,8 +178,23 @@ body {
   display: block;
   width: 100%;
   height: 100%;
-  opacity: 0.88;
+  opacity: 0.72;
   mix-blend-mode: screen;
+}
+
+/* Phones / tablets: no canvas (WP omits element); stronger scrim & calmer image */
+body.ds-circuit-lite .ds-circuit-bg__image {
+  opacity: 0.18;
+  filter: saturate(0.95) contrast(1);
+}
+
+body.ds-circuit-lite .ds-circuit-bg__scrim {
+  background: linear-gradient(
+    180deg,
+    rgba(10, 22, 40, 0.9) 0%,
+    rgba(10, 22, 40, 0.85) 50%,
+    rgba(10, 22, 40, 0.94) 100%
+  );
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -103,7 +203,14 @@ body {
   }
 
   .ds-circuit-bg__image {
-    opacity: 0.5;
+    opacity: 0.28;
+  }
+}
+
+/* Narrow desktop window: never paint animated canvas (matches JS cutoff) */
+@media (max-width: 900px) {
+  .ds-circuit-bg__canvas {
+    display: none !important;
   }
 }
 

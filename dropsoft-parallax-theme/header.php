@@ -21,7 +21,10 @@ $dropsoft_circuit_style = 'background-image: url(' . esc_url(get_template_direct
 ?>
 <div class="ds-circuit-bg" aria-hidden="true">
 	<div class="ds-circuit-bg__image" style="<?php echo esc_attr($dropsoft_circuit_style); ?>"></div>
-	<canvas class="ds-circuit-bg__canvas" width="300" height="150"></canvas>
+	<div class="ds-circuit-bg__scrim"></div>
+	<?php if (!function_exists('wp_is_mobile') || !wp_is_mobile()) : ?>
+		<canvas class="ds-circuit-bg__canvas" width="300" height="150"></canvas>
+	<?php endif; ?>
 </div>
 <a class="skip-link screen-reader-text" href="#main"><?php esc_html_e('Skip to content', 'dropsoft-corporate'); ?></a>
 

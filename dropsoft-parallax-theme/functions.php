@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('DROPSOFT_CORPORATE_VERSION', '1.2.1');
+define('DROPSOFT_CORPORATE_VERSION', '1.2.2');
 
 require_once get_template_directory() . '/inc/pricing-data.php';
 
@@ -136,6 +136,20 @@ function dropsoft_corporate_body_class_elementor($classes) {
 add_filter('body_class', 'dropsoft_corporate_body_class_elementor');
 
 /**
+ * Lighter background path on phones / tablets (no animated canvas).
+ *
+ * @param string[] $classes Body classes.
+ * @return string[]
+ */
+function dropsoft_corporate_body_class_circuit_lite($classes) {
+    if (function_exists('wp_is_mobile') && wp_is_mobile()) {
+        $classes[] = 'ds-circuit-lite';
+    }
+    return $classes;
+}
+add_filter('body_class', 'dropsoft_corporate_body_class_circuit_lite');
+
+/**
  * Avoid Rellax / theme JS conflicting with Elementor preview iframe.
  */
 function dropsoft_corporate_elementor_dequeue_theme_scripts() {
@@ -197,13 +211,16 @@ function dropsoft_corporate_assets() {
         $script_load
     );
 
-    wp_enqueue_script(
-        'dropsoft-corporate-circuit-bg',
-        get_template_directory_uri() . '/assets/js/circuit-bg.js',
-        array(),
-        DROPSOFT_CORPORATE_VERSION,
-        $script_load
-    );
+    /* Animated circuit canvas is heavy on mobile GPUs — skip script + use static image only. */
+    if (!function_exists('wp_is_mobile') || !wp_is_mobile()) {
+        wp_enqueue_script(
+            'dropsoft-corporate-circuit-bg',
+            get_template_directory_uri() . '/assets/js/circuit-bg.js',
+            array(),
+            DROPSOFT_CORPORATE_VERSION,
+            $script_load
+        );
+    }
 }
 add_action('wp_enqueue_scripts', 'dropsoft_corporate_assets');
 
