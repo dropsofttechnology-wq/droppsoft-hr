@@ -1,0 +1,236 @@
+.operational-expenses-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.operational-expenses-page .page-header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+}
+
+.operational-expenses-page .page-description {
+  color: var(--text-muted, #5c6570);
+  margin: 0 0 1.25rem;
+  line-height: 1.45;
+}
+
+.op-ex-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e2e6ea);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+.op-ex-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.op-ex-card h3 {
+  margin: 0 0 0.65rem;
+  font-size: 1rem;
+}
+
+.op-ex-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.op-ex-inline-form input {
+  min-width: 140px;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #cfd4d9);
+}
+
+.op-ex-supplier-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.op-ex-supplier-form input,
+.op-ex-supplier-form textarea {
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #cfd4d9);
+}
+
+.op-ex-supplier-form textarea {
+  grid-column: 1 / -1;
+}
+
+.op-ex-mini-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.op-ex-mini-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-color, #eef1f3);
+}
+
+.op-ex-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.op-ex-toolbar {
+  margin-bottom: 0.75rem;
+}
+
+.op-ex-toolbar select {
+  margin-left: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+}
+
+.op-ex-expense-form .op-ex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.65rem 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.op-ex-expense-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.op-ex-expense-form .span-2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 640px) {
+  .op-ex-expense-form .span-2 {
+    grid-column: span 1;
+  }
+}
+
+.op-ex-expense-form input,
+.op-ex-expense-form select {
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #cfd4d9);
+}
+
+.op-ex-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border-color, #cfd4d9);
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.linkish {
+  background: none;
+  border: none;
+  color: var(--link-color, #2563eb);
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+}
+
+.muted {
+  color: var(--text-muted, #6b7280);
+  font-size: 0.9em;
+}
+
+.op-ex-table-wrap {
+  overflow-x: auto;
+}
+
+.op-ex-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.op-ex-table th,
+.op-ex-table td {
+  text-align: left;
+  padding: 0.5rem 0.45rem;
+  border-bottom: 1px solid var(--border-color, #eef1f3);
+}
+
+.op-ex-actions-cell {
+  white-space: nowrap;
+}
+
+.op-ex-status {
+  text-transform: capitalize;
+  font-size: 0.85rem;
+}
+
+.op-ex-status--draft {
+  color: #92400e;
+}
+.op-ex-status--approved {
+  color: #1d4ed8;
+}
+.op-ex-status--paid {
+  color: #047857;
+}
+.op-ex-status--rejected {
+  color: #b91c1c;
+}
+.op-ex-status--void {
+  color: #6b7280;
+}
+
+.op-ex-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.op-ex-modal {
+  background: var(--card-bg, #fff);
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.op-ex-modal h3 {
+  margin: 0 0 0.75rem;
+}
+
+.op-ex-modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.op-ex-modal textarea {
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #cfd4d9);
+}
