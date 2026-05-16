@@ -1,0 +1,54 @@
+﻿.shopping-request-page {
+  max-width: 560px;
+}
+
+.sar-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.sar-form input,
+.sar-form select,
+.sar-form textarea {
+  width: 100%;
+  max-width: 400px;
+}
+
+.sar-form .form-hint {
+  margin: 0.35rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #64748b);
+  line-height: 1.45;
+}
+
+.sar-form .optional {
+  font-weight: 400;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.shopping-items-wrap {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.shopping-item-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 1fr 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.shopping-item-total {
+  text-align: right;
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .shopping-item-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .shopping-item-total {
+    text-align: left;
+  }
+}
+

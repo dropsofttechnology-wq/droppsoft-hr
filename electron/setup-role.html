@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dropsoft HR — Setup</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 28px 32px 36px;
+      color: #0f172a;
+      line-height: 1.5;
+      background: linear-gradient(165deg, #f0f9ff 0%, #f8fafc 40%, #fff 100%);
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; font-weight: 700; }
+    .lead { margin: 0 0 22px; font-size: 14px; color: #475569; max-width: 52rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 52rem; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 18px 18px 16px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .card:hover { border-color: #93c5fd; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08); }
+    .card.selected { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2); }
+    .card h2 { font-size: 1rem; margin: 0 0 8px; }
+    .card p { margin: 0; font-size: 13px; color: #64748b; }
+    label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #334155; }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+    }
+    input:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
+    .client-fields {
+      margin-top: 20px;
+      max-width: 52rem;
+      padding: 16px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      display: none;
+    }
+    .client-fields.show { display: block; }
+    .actions { margin-top: 22px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    button {
+      padding: 11px 22px;
+      font-size: 14px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #2563eb;
+      color: #fff;
+      font-weight: 600;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .err { color: #b91c1c; font-size: 13px; margin-top: 10px; white-space: pre-wrap; }
+    .hint { font-size: 12px; color: #64748b; margin-top: 8px; }
+    code { font-size: 12px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>How will this computer use Dropsoft HR?</h1>
+  <p class="lead">
+    Choose <strong>Server</strong> for the one PC that holds the database and runs the HR API for your office.
+    Choose <strong>Client</strong> for other PCs that only connect to that server over your network.
+  </p>
+
+  <div class="grid" id="cards">
+    <div class="card" data-role="server" id="card-server">
+      <h2>This PC is the server</h2>
+      <p>Database and API run here. Other computers on the LAN connect to this machine. Allow the app through Windows Firewall for the API port.</p>
+    </div>
+    <div class="card" data-role="client" id="card-client">
+      <h2>This PC is a client</h2>
+      <p>No local HR database. Enter your server’s address (IP and port), e.g. <code>http://192.168.1.10:32100</code></p>
+    </div>
+  </div>
+
+  <div class="client-fields" id="client-fields">
+    <label for="url">Server URL</label>
+    <input id="url" type="text" placeholder="http://192.168.1.10:32100" autocomplete="off" />
+    <p class="hint">Use the Windows IP of the server PC and the port shown when the server runs (often 32100).</p>
+  </div>
+
+  <div class="actions">
+    <button type="button" id="btn" disabled>Continue</button>
+    <span class="err" id="err"></span>
+  </div>
+
+  <script>
+    let role = null
+    const cards = document.getElementById('cards')
+    const clientFields = document.getElementById('client-fields')
+    const urlInput = document.getElementById('url')
+    const btn = document.getElementById('btn')
+    const err = document.getElementById('err')
+
+    function updateUI() {
+      document.querySelectorAll('.card').forEach((c) => {
+        c.classList.toggle('selected', c.dataset.role === role)
+      })
+      clientFields.classList.toggle('show', role === 'client')
+      btn.disabled = !role || (role === 'client' && !urlInput.value.trim())
+    }
+
+    cards.addEventListener('click', (e) => {
+      const card = e.target.closest('.card')
+      if (!card) return
+      role = card.dataset.role
+      updateUI()
+    })
+
+    urlInput.addEventListener('input', updateUI)
+
+    btn.addEventListener('click', async () => {
+      err.textContent = ''
+      btn.disabled = true
+      try {
+        const payload = { role }
+        if (role === 'client') {
+          payload.serverUrl = urlInput.value.trim()
+        }
+        const res = await window.setupRoleApi.finish(payload)
+        if (res && res.error) {
+          err.textContent = res.error
+          btn.disabled = false
+          return
+        }
+      } catch (e) {
+        err.textContent = e.message || String(e)
+        btn.disabled = false
+      }
+    })
+  </script>
+</body>
+</html>

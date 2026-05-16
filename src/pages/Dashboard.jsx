@@ -12,9 +12,14 @@ import {
 } from '../services/salaryAdvanceService'
 import { getShoppingRequests, approveShoppingRequest } from '../services/shoppingService'
 import { getOperationalExpensesSummary } from '../services/schoolOperationalExpensesService'
+import { getFeesSummary } from '../services/schoolFeeLedgerService'
+import { getAttendanceDashboardSummary } from '../services/schoolStudentAttendanceService'
 import { isLocalDataSource } from '../config/dataSource'
+import { DATABASE_ID } from '../config/appwrite'
 import { hasPermission } from '../utils/permissions'
+import { formatMoneyAmount } from '../utils/formatMoney'
 import { format } from 'date-fns'
+import { buildStudentMarkPath, buildStudentPeriodReportPath } from '../utils/studentAttendanceNav'
 import './Dashboard.css'
 
 const Dashboard = () => {
@@ -31,6 +36,9 @@ const Dashboard = () => {
   const [pendingAdvances, setPendingAdvances] = useState([])
   const [pendingShoppings, setPendingShoppings] = useState([])
   const [expenseSummary, setExpenseSummary] = useState(null)
+  const [feeSummary, setFeeSummary] = useState(null)
+  const [attendanceSummary, setAttendanceSummary] = useState(null)
+  const [attendanceSummaryLoading, setAttendanceSummaryLoading] = useState(false)
   const [expenseSummaryMonth, setExpenseSummaryMonth] = useState(() => format(new Date(), 'yyyy-MM'))
   const [approvalModal, setApprovalModal] = useState(null)
   const [busyActionKey, setBusyActionKey] = useState('')
@@ -100,7 +108,7 @@ const Dashboard = () => {
       }
 
       if (
-        isLocalDataSource() &&
+        (isLocalDataSource() || !!DATABASE_ID) &&
         currentCompany?.$id &&
         (hasPermission(user, 'operational_expenses') ||
           hasPermission(user, 'operational_expenses_approval'))
@@ -113,6 +121,36 @@ const Dashboard = () => {
         }
       } else {
         setExpenseSummary(null)
+      }
+
+      if (
+        isLocalDataSource() &&
+        currentCompany?.$id &&
+        hasPermission(user, 'fee_ledger')
+      ) {
+        try {
+          const f = await getFeesSummary(currentCompany.$id, expenseSummaryMonth)
+          setFeeSummary(f)
+        } catch {
+          setFeeSummary(null)
+        }
+      } else {
+        setFeeSummary(null)
+      }
+
+      if (isLocalDataSource() && currentCompany?.$id && hasPermission(user, 'school_attendance')) {
+        try {
+          setAttendanceSummaryLoading(true)
+          const a = await getAttendanceDashboardSummary(currentCompany.$id)
+          setAttendanceSummary(a?.success ? a : null)
+        } catch {
+          setAttendanceSummary(null)
+        } finally {
+          setAttendanceSummaryLoading(false)
+        }
+      } else {
+        setAttendanceSummary(null)
+        setAttendanceSummaryLoading(false)
       }
     } catch (error) {
       console.error('Error loading stats:', error)
@@ -502,7 +540,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {isLocalDataSource() &&
+      {(isLocalDataSource() || !!DATABASE_ID) &&
         currentCompany &&
         expenseSummary &&
         (hasPermission(user, 'operational_expenses') ||
@@ -520,9 +558,9 @@ const Dashboard = () => {
               </label>
             </div>
             <p className="dashboard-section-lead">
-              Track institutional costs separately from payroll. Open the expenses page to add drafts,
-              approve, and mark as paid. <strong>Draft count</strong> is all outstanding drafts;{' '}
-              <strong>Paid total</strong> uses the month you select.
+              Track institutional costs separately from payroll (local SQLite API or Appwrite collections). Open the
+              expenses page to add drafts, approve, and mark as paid. <strong>Draft count</strong> is all outstanding
+              drafts; <strong>Paid total</strong> uses the month you select.
             </p>
             <div className="school-expense-summary-grid">
               {hasPermission(user, 'operational_expenses_approval') && (
@@ -559,7 +597,7 @@ const Dashboard = () => {
                     <strong>Paid this month</strong>
                   </div>
                   <div className="school-expense-stat">
-                    {Number(expenseSummary.paid_month_total || 0).toLocaleString()}
+                    {formatMoneyAmount(expenseSummary.paid_month_total, { prefix: 'KES ' })}
                   </div>
                   <div className="school-expense-meta">{expenseSummary.month} (paid date)</div>
                 </div>
@@ -567,6 +605,156 @@ const Dashboard = () => {
             </div>
           </div>
         )}
+
+      {isLocalDataSource() &&
+        currentCompany &&
+        feeSummary &&
+        hasPermission(user, 'fee_ledger') && (
+          <div className="dashboard-section school-fee-summary-section">
+            <div className="school-expense-summary-heading">
+              <h2>School fee ledger</h2>
+              <label className="school-expense-month-label">
+                Month
+                <input
+                  type="month"
+                  value={expenseSummaryMonth}
+                  onChange={(e) => setExpenseSummaryMonth(e.target.value)}
+                />
+              </label>
+            </div>
+            <p className="dashboard-section-lead">
+              Quick view from the local fee API. Open the ledger to manage students, terms, charges, and payments.
+            </p>
+            <div className="school-expense-summary-grid">
+              <button
+                type="button"
+                className="school-expense-card"
+                onClick={() =>
+                  navigate(
+                    `/school/fee-ledger?month=${encodeURIComponent(expenseSummaryMonth)}&tab=summary`
+                  )
+                }
+              >
+                <div className="school-expense-card-head">
+                  <span className="school-expense-icon" aria-hidden="true">
+                    📒
+                  </span>
+                  <strong>Open fee ledger</strong>
+                </div>
+                <div className="school-expense-queue">
+                  <div className="school-expense-queue-row">
+                    <span>Active students</span>
+                    <strong>{feeSummary.active_student_count ?? 0}</strong>
+                  </div>
+                  <div className="school-expense-queue-row">
+                    <span>Open / partial charges</span>
+                    <strong>{formatMoneyAmount(feeSummary.open_charges_total, { prefix: 'KES ' })}</strong>
+                  </div>
+                  <div className="school-expense-queue-row">
+                    <span>Payments this month</span>
+                    <strong>{formatMoneyAmount(feeSummary.payments_month_total, { prefix: 'KES ' })}</strong>
+                  </div>
+                </div>
+                <div className="school-expense-meta">Students, terms, charges, payments</div>
+                <div className="school-expense-quick-links">
+                  <button
+                    type="button"
+                    className="school-expense-quick-link"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate('/school/fee-ledger?tab=years')
+                    }}
+                  >
+                    Year reports
+                  </button>
+                  <button
+                    type="button"
+                    className="school-expense-quick-link"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate('/school/fee-ledger?tab=terms')
+                    }}
+                  >
+                    Term reports
+                  </button>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+      {isLocalDataSource() && currentCompany && hasPermission(user, 'school_attendance') && (
+        <div className="dashboard-section school-fee-summary-section">
+          <h2>Student attendance</h2>
+          <p className="dashboard-section-lead">
+            School-wide register summary (separate from staff clock-in). Click the card to open marking.
+          </p>
+          <div className="school-expense-summary-grid">
+            <button
+              type="button"
+              className="school-expense-card school-attendance-summary-card"
+              onClick={() => {
+                const markDate =
+                  attendanceSummary?.date?.slice(0, 10) || format(new Date(), 'yyyy-MM-dd')
+                navigate(buildStudentMarkPath({ date: markDate }))
+              }}
+              disabled={attendanceSummaryLoading}
+            >
+              <div className="school-expense-card-head">
+                <span className="school-expense-icon" aria-hidden="true">
+                  📋
+                </span>
+                <strong>Student Attendance Summary</strong>
+              </div>
+              {attendanceSummaryLoading ? (
+                <p className="school-attendance-summary-loading">Loading summary…</p>
+              ) : (
+                <>
+                  <div className="school-attendance-summary-rate" aria-live="polite">
+                    {attendanceSummary?.rate != null ? `${attendanceSummary.rate}%` : '—'}
+                  </div>
+                  <p className="school-attendance-summary-counts">
+                    {attendanceSummary?.presentCount ?? 0} Present · {attendanceSummary?.absentCount ?? 0}{' '}
+                    Absent
+                  </p>
+                  {attendanceSummary && !attendanceSummary.isToday ? (
+                    <p className="school-attendance-summary-date-note">
+                      Latest saved register: {attendanceSummary.date}
+                    </p>
+                  ) : null}
+                  {(attendanceSummary?.unmarkedClassesCount ?? 0) > 0 ? (
+                    <p className="school-attendance-summary-warning" role="status">
+                      ⚠️ {attendanceSummary.unmarkedClassesCount} class
+                      {attendanceSummary.unmarkedClassesCount === 1 ? '' : 'es'} pending register
+                    </p>
+                  ) : null}
+                  {(attendanceSummary?.presentCount ?? 0) + (attendanceSummary?.absentCount ?? 0) === 0 ? (
+                    <p className="school-attendance-summary-empty">No marks saved yet for this date.</p>
+                  ) : null}
+                </>
+              )}
+              <div className="school-expense-meta">Open marking grid · present + late count toward rate</div>
+            </button>
+            <button
+              type="button"
+              className="school-expense-card"
+              onClick={() => {
+                const from = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd')
+                const to = format(new Date(), 'yyyy-MM-dd')
+                navigate(buildStudentPeriodReportPath({ fromDate: from, toDate: to }))
+              }}
+            >
+              <div className="school-expense-card-head">
+                <span className="school-expense-icon" aria-hidden="true">
+                  📊
+                </span>
+                <strong>Period report</strong>
+              </div>
+              <div className="school-expense-meta">Attended and coverage rates by class or student</div>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Key Statistics */}
       <div className="stats-grid">

@@ -1,37 +1,154 @@
 {
   "name": "droppsoft-hr",
-  "version": "1.0.0",
+  "version": "1.0.9",
   "description": "HR & Payroll Management System with Face Recognition",
+  "author": "Dropsoft",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
+    "init:sqlite": "node scripts/init-hr-sqlite.js",
+    "server": "node server/cli.js",
+    "electron": "electron .",
+    "electron:dev": "electron .",
     "build": "vite build",
+    "build:electron": "vite build",
+    "postinstall": "electron-builder install-app-deps && node scripts/ensure-env-local.js",
+    "ensure:env": "node scripts/ensure-env-local.js",
+    "rebuild:native": "electron-rebuild -f -w better-sqlite3",
+    "rebuild:node": "npm rebuild better-sqlite3",
+    "pack:win": "npm run rebuild:native && npm run build:electron && electron-builder --win --x64",
+    "pack:win:clean": "node -e \"try{require('fs').rmSync('release',{recursive:true})}catch(e){} try{require('fs').rmSync('dist',{recursive:true})}catch(e){}\" && npm run pack:win",
+    "pack:win:dir": "npm run rebuild:native && npm run build:electron && electron-builder --win --dir --x64",
+    "build:android": "vite build --mode android && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:apk": "npm run build:android && cd android && .\\gradlew.bat assembleDebug",
+    "android:apk:win": "powershell -ExecutionPolicy Bypass -File scripts/build-android-apk.ps1",
+    "android:apk-path": "node scripts/print-android-apk-path.js",
+    "android:assemble": "scripts\\assemble-android-debug.cmd",
+    "android:bundle": "npm run build:android && cd android && .\\gradlew.bat bundleRelease",
+    "android:release-apk": "npm run build:android && cd android && .\\gradlew.bat assembleRelease",
+    "android:play:win": "powershell -ExecutionPolicy Bypass -File scripts/build-android-play-bundle.ps1",
+    "build:lowmem": "node --max-old-space-size=4096 node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
+    "preview:payslip-layout": "node scripts/preview-payslip-layout.js",
+    "preview:payslip-open": "powershell -ExecutionPolicy Bypass -File scripts/open-payslip-previews.ps1",
+    "preview:payslip-all": "npm run preview:payslip-layout && npm run preview:payslip-open",
+    "test": "vitest",
+    "test:run": "vitest run",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "check:appwrite": "node appwrite-setup.js"
+    "check:appwrite": "node appwrite-setup.js",
+    "setup:holidays-leave": "node appwrite-collections-holiday-leave.js",
+    "license:issuer": "node scripts/license-issuer-server.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/preferences": "^8.0.1",
     "@vladmandic/face-api": "^1.6.9",
+    "adm-zip": "^0.5.17",
     "appwrite": "^13.0.2",
+    "archiver": "^7.0.1",
     "axios": "^1.6.2",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.8.0",
+    "cors": "^2.8.6",
     "date-fns": "^2.30.0",
+    "dotenv": "^16.3.1",
+    "express": "^5.2.1",
+    "get-port": "^7.2.0",
     "html5-qrcode": "^2.3.8",
-    "jspdf": "^2.5.1",
-    "jspdf-autotable": "^3.8.2",
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
+    "multer": "^2.1.1",
+    "nodemailer": "^8.0.5",
+    "pdfkit": "^0.18.0",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0"
+    "react-hot-toast": "^2.4.1",
+    "react-router-dom": "^6.20.0",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
-    "dotenv": "^16.3.1",
+    "electron": "^41.0.4",
+    "electron-builder": "^26.8.1",
     "eslint": "^8.55.0",
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
-    "vite": "^5.0.8"
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  },
+  "build": {
+    "appId": "com.dropsoft.hr",
+    "productName": "Dropsoft HR",
+    "copyright": "Copyright © Dropsoft",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "**/*",
+      "!src/**",
+      "!release/**",
+      "!release-*/**",
+      "!.asar_check/**",
+      "!.asar_tmp/**",
+      "!.installed_check/**",
+      "!android/**",
+      "!**/.git/**",
+      "!**/*.md",
+      "!.env",
+      "!.env.*",
+      "!.cursor/**"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/bindings/**/*",
+      "node_modules/file-uri-to-path/**/*",
+      "**/node_modules/better-sqlite3/**",
+      "**/*.node",
+      "public/icon.ico",
+      "dist/**"
+    ],
+    "npmRebuild": true,
+    "electronVersion": "41.0.4",
+    "icon": "public/icon.ico",
+    "win": {
+      "forceCodeSigning": false,
+      "icon": "public/icon.ico",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "installerIcon": "public/icon.ico",
+      "uninstallerIcon": "public/icon.ico",
+      "artifactName": "${productName}-${version}-Setup-${arch}.${ext}",
+      "include": "build/installer.nsh"
+    }
   }
 }

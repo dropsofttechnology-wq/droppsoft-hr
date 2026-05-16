@@ -1,0 +1,182 @@
+.student-attendance-marking {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 4.5rem;
+}
+
+.student-attendance-marking-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.student-attendance-marking-toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #5c6570);
+}
+
+.student-attendance-marking-toolbar input[type='date'],
+.student-attendance-marking-toolbar select {
+  min-width: 160px;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+}
+
+.student-attendance-marking-export {
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--primary-color, #2563eb);
+  background: var(--card-bg, #fff);
+  color: var(--primary-color, #2563eb);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.student-attendance-marking-export:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.student-attendance-marking-hint {
+  color: var(--text-muted, #5c6570);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.student-attendance-marking-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+}
+
+.student-attendance-marking-unsaved {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.student-attendance-marking-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-color, #e2e6ea);
+  border-radius: 10px;
+  background: var(--card-bg, #fff);
+}
+
+.student-attendance-marking-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.student-attendance-marking-table th,
+.student-attendance-marking-table td {
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #e8eaed);
+  vertical-align: middle;
+}
+
+.student-attendance-marking-table th {
+  background: var(--table-header-bg, #f6f8fa);
+  font-weight: 600;
+}
+
+.student-attendance-marking-check {
+  width: 3.25rem;
+  text-align: center;
+}
+
+.student-attendance-marking-num {
+  white-space: nowrap;
+  color: var(--text-muted, #5c6570);
+  font-variant-numeric: tabular-nums;
+}
+
+.student-attendance-marking-name {
+  font-weight: 500;
+}
+
+.student-attendance-marking-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.student-attendance-marking-status button {
+  padding: 0.28rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+  background: var(--card-bg, #fff);
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--text-muted, #5c6570);
+}
+
+.student-attendance-marking-status button.active.present {
+  border-color: #16a34a;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 600;
+}
+
+.student-attendance-marking-status button.active.absent {
+  border-color: #dc2626;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 600;
+}
+
+.student-attendance-marking-status button.active.late {
+  border-color: #d97706;
+  background: #ffedd5;
+  color: #9a3412;
+  font-weight: 600;
+}
+
+.student-attendance-marking-status button.active.excused {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1e40af;
+  font-weight: 600;
+}
+
+.student-attendance-marking-table tbody tr.student-attendance-marking-row--highlight {
+  background: linear-gradient(90deg, rgba(250, 204, 21, 0.35), rgba(253, 224, 71, 0.12));
+  box-shadow: inset 3px 0 0 0 #ca8a04;
+}
+
+.student-attendance-marking-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 0 -1.25rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), var(--card-bg, #fff) 40%);
+  border-top: 1px solid var(--border-color, #e2e6ea);
+  box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.student-attendance-marking-save {
+  width: 100%;
+  max-width: 320px;
+  padding: 0.65rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.student-attendance-marking-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

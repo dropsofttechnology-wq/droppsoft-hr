@@ -1,0 +1,141 @@
+/**
+ * Android / Capacitor WebView: fit content to screen, safe areas, no horizontal bleed.
+ * Activated via class `capacitor-native` on <html> (see main.jsx).
+ */
+
+html.capacitor-native {
+  height: 100%;
+  /* Dynamic viewport — avoids 100vh bugs with browser chrome on some WebViews */
+  height: 100dvh;
+}
+
+html.capacitor-native body {
+  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+html.capacitor-native #root {
+  min-height: 100%;
+  min-height: 100dvh;
+  max-width: 100vw;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Flex children must be allowed to shrink so wide tables scroll inside, not expand the page */
+html.capacitor-native .layout {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 100vw;
+}
+
+html.capacitor-native .main-content {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Media that often overflows on small screens */
+html.capacitor-native .main-content img,
+html.capacitor-native .main-content video,
+html.capacitor-native .main-content canvas,
+html.capacitor-native .main-content svg {
+  max-width: 100%;
+  height: auto;
+}
+
+html.capacitor-native .main-content pre,
+html.capacitor-native .main-content code {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/*
+ * Page shells often use padding: 2rem — with main-content padding this is tight on phones.
+ * Horizontal inset comes from .main-content; pages only need vertical rhythm here.
+ */
+html.capacitor-native .payroll-page,
+html.capacitor-native .leave-management-page,
+html.capacitor-native .attendance-history-page,
+html.capacitor-native .employees-page,
+html.capacitor-native .dashboard,
+html.capacitor-native .companies-page,
+html.capacitor-native .settings-page,
+html.capacitor-native .reports-page,
+html.capacitor-native .payslips-page,
+html.capacitor-native .holidays-page,
+html.capacitor-native .leave-types-page,
+html.capacitor-native .user-roles-page,
+html.capacitor-native .banks-page,
+html.capacitor-native .opening-balances,
+html.capacitor-native .company-analysis,
+html.capacitor-native .how-to-use,
+html.capacitor-native .system-maint,
+html.capacitor-native .bulk-attendance-page,
+html.capacitor-native .manual-attendance-page,
+html.capacitor-native .historical-data-page,
+html.capacitor-native .sar-mgmt-page,
+html.capacitor-native .face-enrollment-page,
+html.capacitor-native .attendance-terminal,
+html.capacitor-native .leave-request-page,
+html.capacitor-native .salary-advance-request-page,
+html.capacitor-native .pairing-qr-page {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 1rem !important;
+  padding-bottom: 1.5rem !important;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* Payroll sticky bar: align with page (no side padding on page) */
+html.capacitor-native .payroll-page .payroll-sticky-toolbar {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
+/* Scrollable table regions: momentum scrolling on iOS/Android WebView */
+html.capacitor-native .table-container,
+html.capacitor-native .ob-table-wrap,
+html.capacitor-native .leave-requests-table-container,
+html.capacitor-native .attendance-table-container {
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+/* Forms: never wider than viewport */
+html.capacitor-native .form-row {
+  min-width: 0;
+}
+
+html.capacitor-native .container {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Routes rendered outside main Layout (server setup, login) */
+html.capacitor-native .server-connection-page,
+html.capacitor-native .login-container {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  max-width: 100vw;
+}
+
+html.capacitor-native .mobile-hub {
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}

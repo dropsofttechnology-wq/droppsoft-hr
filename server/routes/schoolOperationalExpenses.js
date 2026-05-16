@@ -25,6 +25,29 @@ function companyExists(db, companyId) {
 }
 
 /**
+ * Require `company_id` on the request and ensure it matches the row's `company_id`.
+ * @returns {string|null} company id or null after sending an error response
+ */
+function assertResourceInCompany(req, res, db, existing, notFoundError) {
+  if (!existing) return null
+  const companyId = requireCompanyId(req, res)
+  if (!companyId) return null
+  if (!companyExists(db, companyId)) {
+    res.status(404).json({ error: 'Company not found' })
+    return null
+  }
+  if (String(existing.company_id) !== String(companyId)) {
+    res.status(404).json({ error: notFoundError })
+    return null
+  }
+  return companyId
+}
+
+function assertExpenseInCompany(req, res, db, existing) {
+  return assertResourceInCompany(req, res, db, existing, 'Expense not found')
+}
+
+/**
  * @param {import('better-sqlite3').Database} db
  */
 export function createSchoolOperationalExpensesRoutes(db) {
@@ -125,6 +148,18 @@ export function createSchoolOperationalExpensesRoutes(db) {
          VALUES (?, ?, ?, ?, ?, 1, ?, ?)`
       ).run(id, companyId, name, code || null, parentId || null, now, now)
       const row = db.prepare('SELECT * FROM expense_categories WHERE id = ?').get(id)
+      tryAudit(req, {
+        companyId,
+        action: 'expense_category_create',
+        entityType: 'expense_categories',
+        entityId: id,
+        newValue: JSON.stringify({
+          name: row.name,
+          code: row.code,
+          parent_id: row.parent_id,
+          is_active: row.is_active
+        })
+      })
       res.status(201).json(mapExpenseCategoryRow(row))
     } catch (e) {
       res.status(400).json({ error: e.message })
@@ -136,8 +171,8 @@ export function createSchoolOperationalExpensesRoutes(db) {
       const id = req.params.id
       const existing = db.prepare('SELECT * FROM expense_categories WHERE id = ?').get(id)
       if (!existing) return res.status(404).json({ error: 'Category not found' })
-      const companyId = existing.company_id
-      if (!companyExists(db, companyId)) return res.status(404).json({ error: 'Company not found' })
+      const companyId = assertResourceInCompany(req, res, db, existing, 'Category not found')
+      if (!companyId) return
       const name =
         req.body?.name != null ? String(req.body.name).trim() : String(existing.name || '').trim()
       if (!name) return res.status(400).json({ error: 'name is required' })
@@ -158,6 +193,24 @@ export function createSchoolOperationalExpensesRoutes(db) {
         `UPDATE expense_categories SET name = ?, code = ?, parent_id = ?, is_active = ?, updated_at = ? WHERE id = ?`
       ).run(name, code || null, parentId, isActive, now, id)
       const row = db.prepare('SELECT * FROM expense_categories WHERE id = ?').get(id)
+      tryAudit(req, {
+        companyId,
+        action: 'expense_category_update',
+        entityType: 'expense_categories',
+        entityId: id,
+        oldValue: JSON.stringify({
+          name: existing.name,
+          code: existing.code,
+          parent_id: existing.parent_id,
+          is_active: existing.is_active
+        }),
+        newValue: JSON.stringify({
+          name: row.name,
+          code: row.code,
+          parent_id: row.parent_id,
+          is_active: row.is_active
+        })
+      })
       res.json(mapExpenseCategoryRow(row))
     } catch (e) {
       res.status(400).json({ error: e.message })
@@ -169,6 +222,7 @@ export function createSchoolOperationalExpensesRoutes(db) {
       const id = req.params.id
       const existing = db.prepare('SELECT * FROM expense_categories WHERE id = ?').get(id)
       if (!existing) return res.status(404).json({ error: 'Category not found' })
+      if (!assertResourceInCompany(req, res, db, existing, 'Category not found')) return
       const used = db
         .prepare('SELECT id FROM operational_expenses WHERE category_id = ? LIMIT 1')
         .get(id)
@@ -177,6 +231,13 @@ export function createSchoolOperationalExpensesRoutes(db) {
       }
       const child = db.prepare('SELECT id FROM expense_categories WHERE parent_id = ? LIMIT 1').get(id)
       if (child) return res.status(400).json({ error: 'Remove child categories first.' })
+      tryAudit(req, {
+        companyId: String(existing.company_id),
+        action: 'expense_category_delete',
+        entityType: 'expense_categories',
+        entityId: id,
+        oldValue: JSON.stringify({ name: existing.name, code: existing.code })
+      })
       db.prepare('DELETE FROM expense_categories WHERE id = ?').run(id)
       res.json({ ok: true })
     } catch (e) {
@@ -223,6 +284,18 @@ export function createSchoolOperationalExpensesRoutes(db) {
         now
       )
       const row = db.prepare('SELECT * FROM expense_suppliers WHERE id = ?').get(id)
+      tryAudit(req, {
+        companyId,
+        action: 'expense_supplier_create',
+        entityType: 'expense_suppliers',
+        entityId: id,
+        newValue: JSON.stringify({
+          name: row.name,
+          tax_id: row.tax_id,
+          phone: row.phone,
+          email: row.email
+        })
+      })
       res.status(201).json(mapExpenseSupplierRow(row))
     } catch (e) {
       res.status(400).json({ error: e.message })
@@ -234,6 +307,7 @@ export function createSchoolOperationalExpensesRoutes(db) {
       const id = req.params.id
       const existing = db.prepare('SELECT * FROM expense_suppliers WHERE id = ?').get(id)
       if (!existing) return res.status(404).json({ error: 'Supplier not found' })
+      if (!assertResourceInCompany(req, res, db, existing, 'Supplier not found')) return
       const name =
         req.body?.name != null ? String(req.body.name).trim() : String(existing.name || '').trim()
       if (!name) return res.status(400).json({ error: 'name is required' })
@@ -250,6 +324,26 @@ export function createSchoolOperationalExpensesRoutes(db) {
         id
       )
       const row = db.prepare('SELECT * FROM expense_suppliers WHERE id = ?').get(id)
+      tryAudit(req, {
+        companyId: String(existing.company_id),
+        action: 'expense_supplier_update',
+        entityType: 'expense_suppliers',
+        entityId: id,
+        oldValue: JSON.stringify({
+          name: existing.name,
+          tax_id: existing.tax_id,
+          phone: existing.phone,
+          email: existing.email,
+          notes: existing.notes
+        }),
+        newValue: JSON.stringify({
+          name: row.name,
+          tax_id: row.tax_id,
+          phone: row.phone,
+          email: row.email,
+          notes: row.notes
+        })
+      })
       res.json(mapExpenseSupplierRow(row))
     } catch (e) {
       res.status(400).json({ error: e.message })
@@ -261,10 +355,18 @@ export function createSchoolOperationalExpensesRoutes(db) {
       const id = req.params.id
       const existing = db.prepare('SELECT * FROM expense_suppliers WHERE id = ?').get(id)
       if (!existing) return res.status(404).json({ error: 'Supplier not found' })
+      if (!assertResourceInCompany(req, res, db, existing, 'Supplier not found')) return
       const used = db.prepare('SELECT id FROM operational_expenses WHERE supplier_id = ? LIMIT 1').get(id)
       if (used) {
         return res.status(400).json({ error: 'Supplier is referenced by expenses; remove supplier from those first.' })
       }
+      tryAudit(req, {
+        companyId: String(existing.company_id),
+        action: 'expense_supplier_delete',
+        entityType: 'expense_suppliers',
+        entityId: id,
+        oldValue: JSON.stringify({ name: existing.name, tax_id: existing.tax_id })
+      })
       db.prepare('DELETE FROM expense_suppliers WHERE id = ?').run(id)
       res.json({ ok: true })
     } catch (e) {
@@ -278,26 +380,83 @@ export function createSchoolOperationalExpensesRoutes(db) {
       const companyId = requireCompanyId(req, res)
       if (!companyId) return
       if (!companyExists(db, companyId)) return res.status(404).json({ error: 'Company not found' })
-      let q = 'SELECT * FROM operational_expenses WHERE company_id = ?'
-      const params = [companyId]
+
+      const qSearchRaw = req.query.q != null ? String(req.query.q).trim().toLowerCase() : ''
+      const qInner = qSearchRaw.replace(/%/g, '').replace(/_/g, '').trim()
+
+      const joins =
+        qInner.length > 0
+          ? ` LEFT JOIN expense_categories c ON c.id = e.category_id AND c.company_id = e.company_id
+              LEFT JOIN expense_suppliers s ON s.id = e.supplier_id AND s.company_id = e.company_id
+              LEFT JOIN employees emp ON emp.id = e.linked_employee_id AND emp.company_id = e.company_id`
+          : ''
+
+      const bind = []
+      const whereParts = ['e.company_id = ?']
+      bind.push(companyId)
+
       const status = req.query.status ? String(req.query.status).trim().toLowerCase() : ''
       if (status && status !== 'all') {
-        q += ' AND status = ?'
-        params.push(status)
+        whereParts.push('e.status = ?')
+        bind.push(status)
       }
       const from = req.query.from ? String(req.query.from).trim() : ''
       const to = req.query.to ? String(req.query.to).trim() : ''
       if (/^\d{4}-\d{2}-\d{2}$/.test(from)) {
-        q += ' AND incurred_on >= ?'
-        params.push(from)
+        whereParts.push('e.incurred_on >= ?')
+        bind.push(from)
       }
       if (/^\d{4}-\d{2}-\d{2}$/.test(to)) {
-        q += ' AND incurred_on <= ?'
-        params.push(to)
+        whereParts.push('e.incurred_on <= ?')
+        bind.push(to)
       }
-      q += ' ORDER BY incurred_on DESC, created_at DESC'
-      const rows = db.prepare(q).all(...params)
-      res.json(rows.map(mapOperationalExpenseRow))
+
+      if (qInner.length > 0) {
+        const term = `%${qInner}%`
+        const likeParts = [
+          'LOWER(COALESCE(e.description,\'\')) LIKE ?',
+          'LOWER(COALESCE(e.reference,\'\')) LIKE ?',
+          'LOWER(COALESCE(e.notes,\'\')) LIKE ?',
+          'LOWER(COALESCE(e.status,\'\')) LIKE ?',
+          'LOWER(COALESCE(e.id,\'\')) LIKE ?',
+          'LOWER(COALESCE(c.name,\'\')) LIKE ?',
+          'LOWER(COALESCE(s.name,\'\')) LIKE ?',
+          'LOWER(COALESCE(emp.name,\'\')) LIKE ?'
+        ]
+        whereParts.push(`(${likeParts.join(' OR ')})`)
+        for (let i = 0; i < likeParts.length; i += 1) bind.push(term)
+      }
+
+      const whereSql = whereParts.join(' AND ')
+      const orderSql = 'ORDER BY e.incurred_on DESC, e.created_at DESC'
+      const fromSql = `FROM operational_expenses e${joins}`
+
+      const limitRaw = req.query.limit
+      const hasLimit = limitRaw !== undefined && limitRaw !== ''
+      let limit = null
+      let offset = 0
+      if (hasLimit) {
+        limit = Math.min(Math.max(parseInt(String(limitRaw), 10) || 25, 1), 200)
+        offset = Math.min(Math.max(parseInt(String(req.query.offset ?? 0), 10) || 0, 0), 500000)
+      }
+
+      const listSql = `SELECT e.* ${fromSql} WHERE ${whereSql} ${orderSql}`
+      const countSql = `SELECT COUNT(*) AS c ${fromSql} WHERE ${whereSql}`
+
+      if (!hasLimit) {
+        const rows = db.prepare(listSql).all(...bind)
+        return res.json(rows.map(mapOperationalExpenseRow))
+      }
+
+      const totalRow = db.prepare(countSql).get(...bind)
+      const total = Number(totalRow?.c ?? 0) || 0
+      const rows = db.prepare(`${listSql} LIMIT ? OFFSET ?`).all(...bind, limit, offset)
+      return res.json({
+        items: rows.map(mapOperationalExpenseRow),
+        total,
+        limit,
+        offset
+      })
     } catch (e) {
       res.status(500).json({ error: e.message })
     }
@@ -348,8 +507,14 @@ export function createSchoolOperationalExpensesRoutes(db) {
 
   r.get('/operational-expenses/:id', canView, (req, res) => {
     try {
+      const companyId = requireCompanyId(req, res)
+      if (!companyId) return
+      if (!companyExists(db, companyId)) return res.status(404).json({ error: 'Company not found' })
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(req.params.id)
       if (!row) return res.status(404).json({ error: 'Expense not found' })
+      if (String(row.company_id) !== String(companyId)) {
+        return res.status(404).json({ error: 'Expense not found' })
+      }
       res.json(mapOperationalExpenseRow(row))
     } catch (e) {
       res.status(500).json({ error: e.message })
@@ -442,7 +607,8 @@ export function createSchoolOperationalExpensesRoutes(db) {
       if (String(existing.status) !== 'draft') {
         return res.status(400).json({ error: 'Only draft expenses can be edited' })
       }
-      const companyId = existing.company_id
+      const companyId = assertExpenseInCompany(req, res, db, existing)
+      if (!companyId) return
       let categoryId = existing.category_id
       if (req.body?.category_id != null) {
         categoryId = String(req.body.category_id).trim()
@@ -536,6 +702,12 @@ export function createSchoolOperationalExpensesRoutes(db) {
         })
       })
       res.json(mapOperationalExpenseRow(row))
+    } catch (e) {
+      res.status(400).json({ error: e.message })
+    }
+  })
+
+  r.delete('/operational-expenses/:id', canEdit, (req, res) => {
     try {
       const id = req.params.id
       const existing = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
@@ -543,8 +715,10 @@ export function createSchoolOperationalExpensesRoutes(db) {
       if (String(existing.status) !== 'draft') {
         return res.status(400).json({ error: 'Only draft expenses can be deleted' })
       }
+      const companyId = assertExpenseInCompany(req, res, db, existing)
+      if (!companyId) return
       tryAudit(req, {
-        companyId: existing.company_id,
+        companyId,
         action: 'operational_expense_delete',
         entityType: 'operational_expenses',
         entityId: id,
@@ -569,6 +743,8 @@ export function createSchoolOperationalExpensesRoutes(db) {
       if (String(existing.status) !== 'draft') {
         return res.status(400).json({ error: 'Only draft expenses can be approved' })
       }
+      const companyId = assertExpenseInCompany(req, res, db, existing)
+      if (!companyId) return
       const err = blockSelfApproval(req, existing)
       if (err) return res.status(err.status).json({ error: err.error })
       const now = new Date().toISOString()
@@ -578,7 +754,7 @@ export function createSchoolOperationalExpensesRoutes(db) {
       ).run(req.userId, now, now, id)
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
       tryAudit(req, {
-        companyId: existing.company_id,
+        companyId,
         action: 'operational_expense_approve',
         entityType: 'operational_expenses',
         entityId: id,
@@ -599,6 +775,8 @@ export function createSchoolOperationalExpensesRoutes(db) {
       if (String(existing.status) !== 'draft') {
         return res.status(400).json({ error: 'Only draft expenses can be rejected' })
       }
+      const companyId = assertExpenseInCompany(req, res, db, existing)
+      if (!companyId) return
       const reason = String(req.body?.rejected_reason || req.body?.reason || '').trim()
       if (!reason) return res.status(400).json({ error: 'rejected_reason is required' })
       const now = new Date().toISOString()
@@ -607,7 +785,7 @@ export function createSchoolOperationalExpensesRoutes(db) {
       ).run(reason, req.userId, now, now, id)
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
       tryAudit(req, {
-        companyId: existing.company_id,
+        companyId,
         action: 'operational_expense_reject',
         entityType: 'operational_expenses',
         entityId: id,
@@ -628,6 +806,8 @@ export function createSchoolOperationalExpensesRoutes(db) {
       if (String(existing.status) !== 'approved') {
         return res.status(400).json({ error: 'Only approved expenses can be marked paid' })
       }
+      const companyId = assertExpenseInCompany(req, res, db, existing)
+      if (!companyId) return
       const paidOn = String(req.body?.paid_on || '').trim().slice(0, 10)
       if (!/^\d{4}-\d{2}-\d{2}$/.test(paidOn)) {
         return res.status(400).json({ error: 'paid_on must be YYYY-MM-DD' })
@@ -642,7 +822,7 @@ export function createSchoolOperationalExpensesRoutes(db) {
       ).run(paidOn, pm, now, id)
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
       tryAudit(req, {
-        companyId: existing.company_id,
+        companyId,
         action: 'operational_expense_mark_paid',
         entityType: 'operational_expenses',
         entityId: id,
@@ -664,6 +844,8 @@ export function createSchoolOperationalExpensesRoutes(db) {
       if (st !== 'approved' && st !== 'paid') {
         return res.status(400).json({ error: 'Only approved or paid expenses can be voided' })
       }
+      const companyId = assertExpenseInCompany(req, res, db, existing)
+      if (!companyId) return
       const voidReason = String(req.body?.void_reason || '').trim()
       if (!voidReason) return res.status(400).json({ error: 'void_reason is required' })
       const now = new Date().toISOString()
@@ -672,7 +854,7 @@ export function createSchoolOperationalExpensesRoutes(db) {
       ).run(voidReason, now, id)
       const row = db.prepare('SELECT * FROM operational_expenses WHERE id = ?').get(id)
       tryAudit(req, {
-        companyId: existing.company_id,
+        companyId,
         action: 'operational_expense_void',
         entityType: 'operational_expenses',
         entityId: id,

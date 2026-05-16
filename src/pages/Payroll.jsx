@@ -1,15 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Query } from 'appwrite'
-import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns'
+import toast from 'react-hot-toast'
+import { format, parseISO, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { useCompany } from '../contexts/CompanyContext'
 import { useAuth } from '../contexts/AuthContext'
-import { databases, DATABASE_ID, COLLECTIONS } from '../config/appwrite'
 import { getEmployees } from '../services/employeeService'
-import { getCompanySettings } from '../utils/settingsHelper'
-import { calculatePayrollLine } from '../utils/payrollCalc'
+import { listAttendanceRecords } from '../services/attendanceService'
+import { getCompanySettings, getCompanySettingBoolean } from '../utils/settingsHelper'
+import { isLocalDataSource } from '../config/dataSource'
+import { sendPayslipsByEmail } from '../services/payslipEmailService'
+import {
+  buildLeaveTypePayMap,
+  calculatePayrollLine,
+  computeUnpaidLeaveDayEquivalents
+} from '../utils/payrollCalc'
+import { getPayrollListRowMetrics } from '../utils/payrollListRowMetrics'
 import { getPayrollRunsForPeriod, savePayrollRunsForPeriod } from '../services/payrollService'
 import { isPeriodClosed, closePeriod } from '../services/periodClosureService'
 import { getEmployeeDeductionsForPeriod } from '../services/employeeDeductionsService'
+import { getHolidays } from '../services/holidayService'
+import { getLeaveRequests, getLeaveTypes } from '../services/leaveService'
+import { logAudit } from '../services/auditService'
+import {
+  fetchCompanyPayrollListDataForPeriod,
+  generateCompanyPayrollListPDF,
+  pdfBrandingFromCompanySettings
+} from '../services/reportService'
+import ConfirmDialog from '../components/ConfirmDialog'
 import './Payroll.css'
 
 const SETTINGS_KEYS = [
@@ -57,6 +73,9 @@ const Payroll = () => {
   const [success, setSuccess] = useState('')
   const [periodClosed, setPeriodClosed] = useState(null)
   const [closingPeriod, setClosingPeriod] = useState(false)
+  const [confirmSave, setConfirmSave] = useState(false)
+  const [confirmClose, setConfirmClose] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
 
   useEffect(() => {
     if (!currentCompany) return
@@ -121,13 +140,11 @@ const Payroll = () => {
     const start = startOfMonth(parseISO(`${period}-01`))
     const end = endOfMonth(start)
 
-    const res = await databases.listDocuments(DATABASE_ID, COLLECTIONS.ATTENDANCE, [
-      Query.equal('company_id', currentCompany.$id),
-      Query.greaterThanEqual('date', format(start, 'yyyy-MM-dd')),
-      Query.lessThanEqual('date', format(end, 'yyyy-MM-dd')),
-      Query.limit(5000)
-    ])
-    return res.documents
+    return listAttendanceRecords({
+      companyId: currentCompany.$id,
+      from: format(start, 'yyyy-MM-dd'),
+      to: format(end, 'yyyy-MM-dd')
+    })
   }
 
   const attendanceByUserId = useMemo(() => {
@@ -140,56 +157,48 @@ const Payroll = () => {
     return map
   }, [attendance])
 
+  /** Same slice as payslips / company payroll PDF (`getPayrollListRowMetrics`). */
+  const payrollGridSettings = useMemo(() => {
+    if (!settings) return null
+    return {
+      standard_allowance: settings.standard_allowance,
+      housing_allowance: settings.housing_allowance,
+      housing_allowance_type: settings.housing_allowance_type
+    }
+  }, [settings])
+
   const totals = useMemo(() => {
-    if (!preview.length) return {
+    const empty = {
       basic: 0, hse: 0, sday: 0, absence: 0, otherEarn: 0, totalEarn: 0,
-      paye: 0, nssf: 0, nhif: 0, shopping: 0, advance: 0, housing: 0, otherDed: 0, pension: 0, totalDed: 0, net: 0
+      paye: 0, nssf: 0, shif: 0, shopping: 0, advance: 0, housing: 0, otherDed: 0, pension: 0, totalDed: 0, net: 0
     }
-    
-    let totals = {
-      basic: 0, hse: 0, sday: 0, absence: 0, otherEarn: 0, totalEarn: 0,
-      paye: 0, nssf: 0, nhif: 0, shopping: 0, advance: 0, housing: 0, otherDed: 0, pension: 0, totalDed: 0, net: 0
-    }
-    
-    preview.forEach(l => {
-      const basic = Number(l.basic_salary || 0)
-      const hse = Number(l.housing_allowance || 0)
-      const sday = Number(l.holiday_pay || 0)
-      const absence = -Number(l.absence_deduction || 0)
-      const standard = Number(l.standard_allowance || 0)
-      const otherEarn = standard + Number(l.overtime_pay || 0)
-      const totalEarn = basic + hse + sday + otherEarn + absence
-      const paye = Number(l.paye || 0)
-      const nssf = Number(l.nssf_employee || 0)
-      const nhif = Number(l.shif_employee || 0)
-      const shopping = Number(l.shopping_amount || 0)
-      const advance = Number(l.advance_amount || 0)
-      const housing = Number(l.ahl_employee || 0)
-      const otherDed = Number(l.other_deductions || 0)
-      const pension = 0
-      const totalDed = paye + nssf + nhif + shopping + advance + housing + otherDed + pension
-      const net = totalEarn - totalDed
-      
-      totals.basic += basic
-      totals.hse += hse
-      totals.sday += sday
-      totals.absence += absence
-      totals.otherEarn += otherEarn
-      totals.totalEarn += totalEarn
-      totals.paye += paye
-      totals.nssf += nssf
-      totals.nhif += nhif
-      totals.shopping += shopping
-      totals.advance += advance
-      totals.housing += housing
-      totals.otherDed += otherDed
-      totals.pension += pension
-      totals.totalDed += totalDed
-      totals.net += net
+    if (!preview.length || !payrollGridSettings) return empty
+
+    const totals = { ...empty }
+
+    preview.forEach((l) => {
+      const emp = employees.find((e) => e.$id === l.employee_id) || {}
+      const m = getPayrollListRowMetrics(l, emp, payrollGridSettings, {})
+      totals.basic += m.basic
+      totals.hse += m.hse
+      totals.sday += m.sday
+      totals.absence += m.absence
+      totals.otherEarn += m.otherEarn
+      totals.totalEarn += m.totalEarn
+      totals.paye += m.paye
+      totals.nssf += m.nssf
+      totals.shif += m.shif
+      totals.shopping += m.shopping
+      totals.advance += m.advance
+      totals.housing += m.housingLevy
+      totals.otherDed += m.otherDed
+      totals.pension += m.pension
+      totals.totalDed += m.totalDed
+      totals.net += m.net
     })
-    
+
     return totals
-  }, [preview])
+  }, [preview, employees, payrollGridSettings])
 
   const handlePreview = async () => {
     if (!currentCompany) return
@@ -211,24 +220,57 @@ const Payroll = () => {
       setEmployeeDeductions(deductions)
       const deductionsByEmployeeId = new Map(deductions.map(d => [d.employee_id, d]))
 
+      // Include previous month so unpaid leave spanning pay-date boundaries is loaded (deduction follows pay date rules).
+      const periodMonthStart = parseISO(`${period}-01`)
+      const leaveRangeStart = format(startOfMonth(subMonths(periodMonthStart, 1)), 'yyyy-MM-dd')
+      const leaveRangeEnd = format(endOfMonth(periodMonthStart), 'yyyy-MM-dd')
+      const [leaveTypesList, approvedLeaves] = await Promise.all([
+        getLeaveTypes(currentCompany.$id, false),
+        getLeaveRequests(currentCompany.$id, {
+          status: 'approved',
+          from: leaveRangeStart,
+          to: leaveRangeEnd
+        })
+      ])
+      const leaveTypePayMap = buildLeaveTypePayMap(leaveTypesList || [])
+
+      // Holidays eligible for this payroll run based on pay-date window:
+      // current month (day <= pay date) + previous month tail (day > pay date)
+      const holidayMonthStart = parseISO(`${period}-01`)
+      const holidayRangeStart = format(startOfMonth(subMonths(holidayMonthStart, 1)), 'yyyy-MM-dd')
+      const holidayRangeEnd = format(endOfMonth(holidayMonthStart), 'yyyy-MM-dd')
+      const holidaysInPeriod = await getHolidays(currentCompany.$id, {
+        start_date: holidayRangeStart,
+        end_date: holidayRangeEnd,
+        status: 'active'
+      }).catch(() => [])
+
       const lines = employees.map((emp) => {
         const userId = emp.user_id || emp.$id
         const records = attendanceByUserId.get(userId) || att.filter(r => r.user_id === userId)
         const employeeDeduction = deductionsByEmployeeId.get(emp.$id) || null
+        const unpaidLeaveDayEquivalents = computeUnpaidLeaveDayEquivalents({
+          employeeId: emp.$id,
+          period,
+          approvedLeaves: approvedLeaves || [],
+          leaveTypePayMap,
+          payDate: settings.pay_date != null ? Math.min(31, Math.max(1, Number(settings.pay_date))) : 25
+        })
         return calculatePayrollLine({
           employee: emp,
           attendanceRecords: records,
           period,
           settings,
-          employeeDeduction
+          employeeDeduction,
+          holidaysInPeriod,
+          unpaidLeaveDayEquivalents
         })
       })
 
       setPreview(lines)
-      setSuccess(`Payroll preview ready for ${period} (${lines.length} employees).`)
-      setTimeout(() => setSuccess(''), 3000)
+      toast.success(`Payroll preview ready for ${period} (${lines.length} employees).`)
     } catch (e) {
-      setError(e.message || 'Failed to generate payroll preview')
+      toast.error(e.message || 'Failed to generate payroll preview')
     } finally {
       setLoading(false)
     }
@@ -243,8 +285,7 @@ const Payroll = () => {
       const runs = await getPayrollRunsForPeriod(currentCompany.$id, period)
       if (!runs.length) {
         setPreview([])
-        setSuccess('No saved payroll runs found for this period.')
-        setTimeout(() => setSuccess(''), 3000)
+        toast.success('No saved payroll runs found for this period.')
         return
       }
 
@@ -298,6 +339,7 @@ const Payroll = () => {
           allowances: run.allowances,
           housing_allowance: housingAllowance,
           standard_allowance: standardAllowance,
+          total_earn: run.total_earn,
           gross_pay: run.gross_pay,
           actual_earnings: run.actual_earnings ?? Math.round(gross * actualRatio * 100) / 100,
           projected_earnings: run.projected_earnings ?? Math.round(gross * projectedRatio * 100) / 100,
@@ -318,10 +360,9 @@ const Payroll = () => {
       }).filter(Boolean)
 
       setPreview(lines)
-      setSuccess(`Loaded saved payroll for ${period}.`)
-      setTimeout(() => setSuccess(''), 3000)
+      toast.success(`Loaded saved payroll for ${period}.`)
     } catch (e) {
-      setError(e.message || 'Failed to load saved payroll runs')
+      toast.error(e.message || 'Failed to load saved payroll runs')
     } finally {
       setLoading(false)
     }
@@ -329,20 +370,21 @@ const Payroll = () => {
 
   const handleCloseMonth = async () => {
     if (!currentCompany || !user) return
+    setConfirmClose(true)
+  }
 
-    if (!window.confirm(`Close period ${period}? This will lock further changes for this month.`)) {
-      return
-    }
-
+  const handleCloseMonthConfirm = async () => {
+    if (!currentCompany || !user) return
     try {
       setClosingPeriod(true)
       setError('')
       const closed = await closePeriod(currentCompany.$id, period, user.$id || user.email || 'admin')
       setPeriodClosed(closed)
-      setSuccess(`Period ${period} has been closed.`)
-      setTimeout(() => setSuccess(''), 3000)
+      await logAudit(user.$id, currentCompany.$id, 'period_closed', { entityType: 'period', entityId: period, details: period })
+      setConfirmClose(false)
+      toast.success(`Period ${period} has been closed.`)
     } catch (e) {
-      setError(e.message || 'Failed to close period')
+      toast.error(e.message || 'Failed to close period')
     } finally {
       setClosingPeriod(false)
     }
@@ -361,26 +403,143 @@ const Payroll = () => {
       return
     }
 
-    if (!window.confirm(`Save payroll runs for ${period}? This will overwrite existing runs for this period.`)) {
-      return
-    }
+    setConfirmSave(true)
+  }
 
+  const handleSaveConfirm = async () => {
+    if (!currentCompany || !preview.length || periodClosed) return
     try {
       setSaving(true)
       setError('')
-      setSuccess('')
       await savePayrollRunsForPeriod({
         companyId: currentCompany.$id,
         period,
         payrollLines: preview,
         overwrite: true
       })
-      setSuccess(`Payroll saved for ${period}.`)
-      setTimeout(() => setSuccess(''), 3000)
+      await logAudit(user?.$id, currentCompany.$id, 'payroll_saved', { entityType: 'payroll', entityId: period, details: period })
+      setConfirmSave(false)
+      toast.success(`Payroll saved for ${period}.`)
+
+      if (isLocalDataSource()) {
+        const autoEmail = await getCompanySettingBoolean(
+          currentCompany.$id,
+          'email_payslips_on_save',
+          false
+        )
+        if (autoEmail) {
+          try {
+            const r = await sendPayslipsByEmail(currentCompany.$id, period)
+            toast.success(
+              `Payslip emails: ${r.sent} sent, ${r.skipped} skipped (no work email on file), ${r.failed} failed.`
+            )
+          } catch (err) {
+            toast.error(err?.message || 'Payroll saved, but payslip email step failed.')
+          }
+        }
+      }
     } catch (e) {
-      setError(e.message || 'Failed to save payroll runs')
+      toast.error(e.message || 'Failed to save payroll runs')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const safeFileName = (name) => String(name || 'Company').replace(/[/\\?%*:|"<>]/g, '_')
+
+  /** Same payload as Reports → Company Payroll List: DB runs for this period (must match after Save). */
+  const handleExportPayrollListPdfSaved = async () => {
+    if (!currentCompany || !period) return
+    try {
+      setExportingPdf(true)
+      setError('')
+      const { runs, empById, settings: s, deductionsByEmployeeId } =
+        await fetchCompanyPayrollListDataForPeriod(currentCompany.$id, period)
+      if (!runs.length) {
+        toast.error(
+          'No saved payroll for this period. Click Save Payroll first, or use PDF · On screen after Preview.'
+        )
+        return
+      }
+      const pdfRaw = await getCompanySettings(currentCompany.$id, [
+        'pdf_letterhead_logo_enabled',
+        'pdf_watermark_opacity',
+        'pdf_payslip_watermark_opacity'
+      ]).catch(() => ({}))
+      const blob = await generateCompanyPayrollListPDF({
+        companyName: currentCompany.name || 'Company',
+        companyLogoUrl: currentCompany.logo_url || '',
+        period,
+        runs,
+        empById,
+        settings: s,
+        deductionsByEmployeeId,
+        pdfBranding: pdfBrandingFromCompanySettings(pdfRaw)
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `PAYROLL_LIST_${safeFileName(currentCompany.name)}_${period}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('PDF from saved payroll — same as Reports → Company Payroll List.')
+    } catch (e) {
+      const msg = e.message || 'Failed to generate payroll list PDF'
+      setError(msg)
+      toast.error(msg)
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
+  /** PDF built from the current grid (Preview / Load Saved). Matches screen; differs from Reports until you Save. */
+  const handleExportPayrollListPdfOnScreen = async () => {
+    if (!currentCompany || !settings || !preview.length) {
+      toast.error('Run Preview or Load Saved first.')
+      return
+    }
+    try {
+      setExportingPdf(true)
+      setError('')
+      const empById = new Map(employees.map((e) => [e.$id, e]))
+      const pdfSettings = {
+        standard_allowance: num(settings.standard_allowance, 0),
+        housing_allowance: num(settings.housing_allowance, 0),
+        housing_allowance_type: settings.housing_allowance_type || 'fixed',
+        personal_relief: num(settings.personal_relief, 2400)
+      }
+      const pdfRaw = await getCompanySettings(currentCompany.$id, [
+        'pdf_letterhead_logo_enabled',
+        'pdf_watermark_opacity',
+        'pdf_payslip_watermark_opacity'
+      ]).catch(() => ({}))
+      const blob = await generateCompanyPayrollListPDF({
+        companyName: currentCompany.name || 'Company',
+        companyLogoUrl: currentCompany.logo_url || '',
+        period,
+        runs: preview,
+        empById,
+        settings: pdfSettings,
+        deductionsByEmployeeId: new Map(),
+        pdfBranding: pdfBrandingFromCompanySettings(pdfRaw)
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `PAYROLL_LIST_${safeFileName(currentCompany.name)}_${period}_on-screen.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('PDF from current table. Save payroll if this should match Reports.')
+    } catch (e) {
+      const msg = e.message || 'Failed to generate payroll list PDF'
+      setError(msg)
+      toast.error(msg)
+    } finally {
+      setExportingPdf(false)
     }
   }
 
@@ -396,37 +555,78 @@ const Payroll = () => {
 
   return (
     <div className="payroll-page">
-      <div className="page-header">
-        <h1>Payroll</h1>
-        <div className="payroll-actions">
-          <button className="btn-secondary" onClick={handleLoadSaved} disabled={loading || saving}>
-            Load Saved
-          </button>
-          <button className="btn-secondary" onClick={handlePreview} disabled={loading || saving}>
-            Preview
-          </button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving || loading || !preview.length || !!periodClosed}>
-            {saving ? 'Saving...' : 'Save Payroll'}
-          </button>
-          <button
-            className="btn-secondary"
-            onClick={handleCloseMonth}
-            disabled={loading || saving || !!periodClosed || closingPeriod}
-          >
-            {closingPeriod ? 'Closing...' : periodClosed ? 'Month Closed' : 'Close Month'}
-          </button>
+      <div className="payroll-sticky-toolbar">
+        <div className="page-header payroll-toolbar-header">
+          <h1>Payroll</h1>
+          <div className="payroll-actions">
+            <button
+              type="button"
+              className="btn-secondary payroll-toolbar-btn"
+              onClick={handleLoadSaved}
+              disabled={loading || saving}
+            >
+              Load Saved
+            </button>
+            <button
+              type="button"
+              className="btn-secondary payroll-toolbar-btn"
+              onClick={handlePreview}
+              disabled={loading || saving}
+            >
+              Preview
+            </button>
+            <button
+              type="button"
+              className="btn-secondary payroll-toolbar-btn"
+              onClick={handleExportPayrollListPdfSaved}
+              disabled={loading || saving || exportingPdf}
+              title="Uses payroll saved for this period — identical to Reports → Company Payroll List (PDF)."
+            >
+              {exportingPdf ? 'PDF…' : 'PDF · Saved (Reports)'}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary payroll-toolbar-btn"
+              onClick={handleExportPayrollListPdfOnScreen}
+              disabled={loading || saving || exportingPdf || !preview.length}
+              title="Exports exactly what the table shows. After Preview, may differ from Reports until you Save Payroll."
+            >
+              {exportingPdf ? 'PDF…' : 'PDF · On screen'}
+            </button>
+            <button
+              type="button"
+              className="btn-primary payroll-toolbar-btn payroll-toolbar-btn-primary"
+              onClick={handleSave}
+              disabled={saving || loading || !preview.length || !!periodClosed}
+            >
+              {saving ? 'Saving...' : 'Save Payroll'}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary payroll-toolbar-btn"
+              onClick={handleCloseMonth}
+              disabled={loading || saving || !!periodClosed || closingPeriod}
+            >
+              {closingPeriod ? 'Closing...' : periodClosed ? 'Month Closed' : 'Close Month'}
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="payroll-filters">
-        <div className="filter-group">
-          <label>Period</label>
-          <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
-        </div>
-        <div className="filter-group">
-          <button className="btn-secondary" onClick={loadBaseData} disabled={loading || saving}>
-            Refresh Employees/Settings
-          </button>
+        <div className="payroll-filters payroll-toolbar-filters">
+          <div className="filter-group">
+            <label>Period</label>
+            <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
+          </div>
+          <div className="filter-group">
+            <button
+              type="button"
+              className="btn-secondary payroll-toolbar-btn"
+              onClick={loadBaseData}
+              disabled={loading || saving}
+            >
+              Refresh Employees/Settings
+            </button>
+          </div>
         </div>
       </div>
 
@@ -434,12 +634,20 @@ const Payroll = () => {
         <strong>📋 Important Calculation Notes:</strong>
         <ul>
           <li>
-            <strong>Absence Deduction</strong> is calculated as: <strong>(Gross Pay / 30) × Absent Days</strong>
+            <strong>Pre-tax absence / unpaid leave</strong> and <strong>SUN/HOLIDAY</strong> use one day-pay: <strong>(Basic + HSE allowance) ÷ 30</strong>.
             <br />
-            <small>Where Gross Pay = Basic Salary + House Allowance + Other Fixed Monthly Allowances (per Kenyan law)</small>
+            <small>
+              Manual <strong>absent days</strong> from deductions plus <strong>approved leave</strong> with pay below 100% (e.g. Unpaid = 0%).
+              Unpaid leave is tied to <strong>pay date</strong>: days from day 1 through pay date count in this period&apos;s payroll; calendar days <em>after</em> pay date (and the tail of the previous month after pay date) count in the <strong>following</strong> period&apos;s payroll.
+              <strong> Total earn</strong> and <strong>net pay</strong> use earnings after absence, then all deductions (statutory + PAYE + advance/shopping, etc.).
+            </small>
           </li>
           <li>
             If you loaded saved payroll, click <strong>"Preview"</strong> to recalculate with the latest formula, then <strong>"Save Payroll"</strong> to update.
+          </li>
+          <li>
+            <strong>PDF exports:</strong> <strong>PDF · Saved (Reports)</strong> matches <strong>Reports → Company Payroll List</strong> (database).{' '}
+            <strong>PDF · On screen</strong> matches the grid; after <strong>Preview</strong> it can differ until you <strong>Save Payroll</strong>.
           </li>
         </ul>
       </div>
@@ -486,7 +694,7 @@ const Payroll = () => {
           </div>
           <div className="summary-card">
             <div className="summary-label">Net Total</div>
-            <div className="summary-value success">KES {(totals.net || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+            <div className="summary-value success">KES {(totals.net || 0).toLocaleString(undefined, { maximumFractionDigits: 0, minimumFractionDigits: 0 })}</div>
           </div>
           </div>
 
@@ -503,13 +711,13 @@ const Payroll = () => {
                     <th>NAME</th>
                     <th>BASIC PAY</th>
                     <th>HSE ALLOW</th>
-                    <th>S/DAYSHOL</th>
+                    <th>SUN/HOLIDAY</th>
                     <th>ABSENCE</th>
                     <th>OTHER EARNINGS</th>
                     <th>TOTAL EARN.</th>
                     <th>P.A.Y.E</th>
                     <th>N.S.S.F</th>
-                    <th>N.H.I.F</th>
+                    <th>S.H.I.F</th>
                     <th>SHOPPING</th>
                     <th>ADVANC</th>
                     <th>HOUSING</th>
@@ -521,46 +729,29 @@ const Payroll = () => {
                 </thead>
                 <tbody>
                   {preview.map((l) => {
-                    const emp = employees.find(e => e.$id === l.employee_id) || null
-                    const staffNo = emp?.employee_id || emp?.staff_no || l.employee_id || ''
-                    const basic = Number(l.basic_salary || 0)
-                    const hse = Number(l.housing_allowance || 0)
-                    const sday = Number(l.holiday_pay || 0)
-                    const absence = -Number(l.absence_deduction || 0) // negative like template
-                    const standard = Number(l.standard_allowance || 0)
-                    const otherEarn = standard + Number(l.overtime_pay || 0)
-                    const totalEarn = basic + hse + sday + otherEarn + absence
-                    const paye = Number(l.paye || 0)
-                    const nssf = Number(l.nssf_employee || 0)
-                    const nhif = Number(l.shif_employee || 0) // SHIF labeled as NHIF
-                    const shopping = Number(l.shopping_amount || 0)
-                    const advance = Number(l.advance_amount || 0)
-                    const housing = Number(l.ahl_employee || 0) // AHL labeled as HOUSING
-                    const otherDed = Number(l.other_deductions || 0)
-                    const pension = 0
-                    const totalDed = paye + nssf + nhif + shopping + advance + housing + otherDed + pension
-                    const net = totalEarn - totalDed
+                    const emp = employees.find(e => e.$id === l.employee_id) || {}
+                    const m = getPayrollListRowMetrics(l, emp, payrollGridSettings || {}, {})
 
                     return (
                       <tr key={l.employee_id}>
-                        <td>{staffNo}</td>
-                        <td>{l.name}</td>
-                        <td className="text-right">{basic.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{hse.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{sday.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{absence.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{otherEarn.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right strong">{totalEarn.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{paye.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{nssf.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{nhif.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{shopping.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{advance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{housing.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{otherDed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right">{pension.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right strong">{totalDed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td className="text-right strong success">{net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td>{m.staffNo}</td>
+                        <td>{m.name}</td>
+                        <td className="text-right">{m.basic.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.hse.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.sday.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.absence.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.otherEarn.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right strong">{m.totalEarn.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.paye.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.nssf.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.shif.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.shopping.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.advance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.housingLevy.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.otherDed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right">{m.pension.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right strong">{m.totalDed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right strong success">{m.net.toLocaleString(undefined, { maximumFractionDigits: 0, minimumFractionDigits: 0 })}</td>
                       </tr>
                     )
                   })}
@@ -577,14 +768,14 @@ const Payroll = () => {
                     <td className="text-right strong">{totals.totalEarn.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="text-right strong">{totals.paye.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="text-right strong">{totals.nssf.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td className="text-right strong">{totals.nhif.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="text-right strong">{totals.shif.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="text-right strong">{totals.shopping.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="text-right strong">{totals.advance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="text-right strong">{totals.housing.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="text-right strong">{totals.otherDed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="text-right strong">{totals.pension.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="text-right strong">{totals.totalDed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td className="text-right strong success">{totals.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="text-right strong success">{Math.round(totals.net).toLocaleString(undefined, { maximumFractionDigits: 0, minimumFractionDigits: 0 })}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -592,6 +783,27 @@ const Payroll = () => {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmSave}
+        title="Save payroll"
+        message={`Save payroll runs for ${period}? This will overwrite existing runs for this period.`}
+        confirmLabel="Save"
+        cancelLabel="Cancel"
+        loading={saving}
+        onConfirm={handleSaveConfirm}
+        onCancel={() => setConfirmSave(false)}
+      />
+      <ConfirmDialog
+        open={confirmClose}
+        title="Close period"
+        message={`Close period ${period}? This will lock further changes for this month.`}
+        confirmLabel="Close period"
+        cancelLabel="Cancel"
+        loading={closingPeriod}
+        onConfirm={handleCloseMonthConfirm}
+        onCancel={() => setConfirmClose(false)}
+      />
     </div>
   )
 }

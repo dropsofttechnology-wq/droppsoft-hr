@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { generateQRCodeDataURL, getEmployeeQRToken } from '../services/qrService'
+import { openPrintableForm, escapeHtml } from '../utils/printRequestForms'
 import './EmployeeQRCode.css'
 
-const EmployeeQRCode = ({ employee, onClose }) => {
+const EmployeeQRCode = ({ employee, onClose, companyLogoUrl }) => {
   const [qrCodeUrl, setQrCodeUrl] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -36,43 +37,17 @@ const EmployeeQRCode = ({ employee, onClose }) => {
 
   const printQR = () => {
     if (!qrCodeUrl) return
-
-    const printWindow = window.open('', '_blank')
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>QR Code - ${employee.name}</title>
-          <style>
-            body {
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              padding: 2rem;
-              font-family: Arial, sans-serif;
-            }
-            img {
-              max-width: 400px;
-              margin: 1rem 0;
-            }
-            h2 {
-              margin: 0.5rem 0;
-            }
-            p {
-              color: #666;
-            }
-          </style>
-        </head>
-        <body>
-          <h2>${employee.name}</h2>
-          <p>Employee ID: ${employee.employee_id || employee.staff_no || 'N/A'}</p>
-          <img src="${qrCodeUrl}" alt="QR Code" />
-          <p>Scan this QR code at the attendance terminal</p>
-        </body>
-      </html>
-    `)
-    printWindow.document.close()
-    printWindow.print()
+    const idLabel = employee.employee_id || employee.staff_no || 'N/A'
+    openPrintableForm(
+      `QR Code — ${employee.name || 'Employee'}`,
+      `<div style="text-align:center">
+        <h2 style="font-size:1.15rem;margin:0 0 10px">${escapeHtml(employee.name || '')}</h2>
+        <p style="color:#444;margin:6px 0;font-size:11pt">Employee ID: ${escapeHtml(idLabel)}</p>
+        <img src="${qrCodeUrl}" alt="QR Code" style="max-width:320px;margin:12px auto;display:block"/>
+        <p style="color:#444;font-size:10pt">Scan this QR code at the attendance terminal</p>
+      </div>`,
+      { logoUrl: companyLogoUrl }
+    )
   }
 
   return (

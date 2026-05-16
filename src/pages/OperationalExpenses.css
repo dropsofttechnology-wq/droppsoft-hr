@@ -198,6 +198,21 @@
   overflow-x: auto;
 }
 
+.op-ex-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem 1rem;
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-color, #eef1f3);
+}
+
+.op-ex-pager-meta {
+  font-size: 0.88rem;
+}
+
 .op-ex-table {
   width: 100%;
   border-collapse: collapse;
@@ -209,6 +224,12 @@
   text-align: left;
   padding: 0.5rem 0.45rem;
   border-bottom: 1px solid var(--border-color, #eef1f3);
+}
+
+.op-ex-table tbody tr.op-ex-row--highlight {
+  background: linear-gradient(90deg, rgba(250, 204, 21, 0.35), rgba(253, 224, 71, 0.12));
+  box-shadow: inset 3px 0 0 0 #ca8a04;
+  transition: background 0.35s ease;
 }
 
 .op-ex-actions-cell {

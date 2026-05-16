@@ -33,6 +33,33 @@
   margin-bottom: 0.5rem;
 }
 
+.reports-info {
+  margin: 1.5rem 0;
+}
+
+.reports-info .info-box {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 0.5rem;
+  padding: 1rem 1.5rem;
+  color: #0c4a6e;
+}
+
+.reports-info .info-box strong {
+  color: #075985;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.reports-info .info-box ul {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.5rem;
+}
+
+.reports-info .info-box li {
+  margin-bottom: 0.5rem;
+}
+
 @media (max-width: 768px) {
   .reports-page {
     padding: 1rem;

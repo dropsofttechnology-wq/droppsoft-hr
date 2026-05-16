@@ -1,13 +1,60 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Droppsoft HR - Payroll & Attendance Management</title>
+    <link rel="icon" type="image/x-icon" href="/icon.ico" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/logo.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/logo.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/logo.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/logo.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/logo.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/logo.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/logo.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/logo.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5"
+    />
+    <meta name="theme-color" content="#1e3a2e" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>Dropsoft HR - Payroll & Attendance Management</title>
   </head>
   <body>
     <div id="root"></div>
+    <p
+      id="hr-boot-fallback"
+      style="
+        display: none;
+        margin: 0;
+        padding: 2rem;
+        font-family: system-ui, sans-serif;
+        color: #64748b;
+        max-width: 36rem;
+      "
+    >
+      Loading Dropsoft HR…
+    </p>
+    <script>
+      ;(function () {
+        var fb = document.getElementById('hr-boot-fallback')
+        var root = document.getElementById('root')
+        if (fb) fb.style.display = 'block'
+        setTimeout(function () {
+          if (!root || root.children.length > 0) return
+          if (!fb) return
+          fb.style.color = '#b91c1c'
+          fb.innerHTML =
+            'The app did not start (JavaScript may have failed to load). Try reinstalling, or run from a terminal to see errors. You can also press <kbd>Ctrl+Shift+I</kbd> for Developer Tools.'
+        }, 6000)
+      })()
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

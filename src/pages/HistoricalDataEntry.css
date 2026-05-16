@@ -1,0 +1,721 @@
+.historical-data-page {
+  padding: 2rem;
+}
+
+.historical-data-toolbar {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.historical-data-form {
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.employee-data-table-container {
+  overflow-x: auto;
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.employee-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1200px;
+}
+
+.employee-data-table th,
+.employee-data-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-bg-tertiary);
+  text-align: left;
+  vertical-align: top;
+}
+
+.employee-data-table thead th {
+  background: var(--color-bg-secondary);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.employee-data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.employee-data-table .employee-row:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+.employee-data-table input[type="number"],
+.employee-data-table input[type="text"],
+.employee-data-table input[type="date"],
+.employee-data-table select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+  font-size: 0.9rem;
+}
+
+.employee-data-table input[type="number"]:disabled,
+.employee-data-table input[type="text"]:disabled,
+.employee-data-table input[type="date"]:disabled,
+.employee-data-table select:disabled {
+  background-color: var(--color-bg-secondary);
+  cursor: not-allowed;
+}
+
+.employee-data-table .emp-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+}
+
+.employee-data-table .emp-name {
+  font-weight: 600;
+}
+
+.employee-data-table .emp-sub {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.employee-data-table .empty-cell {
+  text-align: center;
+  padding: 2rem;
+  color: var(--color-text-secondary);
+}
+
+.leaves-cell {
+  min-width: 300px;
+}
+
+.btn-add-leave {
+  padding: 0.4rem 0.8rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.btn-add-leave:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.btn-add-leave:disabled {
+  background: var(--color-bg-tertiary);
+  cursor: not-allowed;
+}
+
+.leaves-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.leave-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+}
+
+.leave-type-select {
+  flex: 1;
+  min-width: 120px;
+}
+
+.leave-date-input {
+  flex: 1;
+  min-width: 110px;
+}
+
+.leave-days {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  padding: 0 0.5rem;
+}
+
+.btn-remove-leave {
+  background: var(--color-danger);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.btn-remove-leave:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.btn-remove-leave:disabled {
+  background: var(--color-bg-tertiary);
+  cursor: not-allowed;
+}
+
+.number-input {
+  width: 80px;
+}
+
+.money-input {
+  width: 120px;
+}
+
+.notes-input {
+  min-width: 150px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-bg-tertiary);
+}
+
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-bg-tertiary);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mark-attendance-section {
+  background: var(--color-bg-secondary);
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--color-bg-tertiary);
+}
+
+.mark-attendance-section h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  color: var(--color-text-primary);
+}
+
+.section-description {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.attendance-options {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.attendance-options .checkbox-group {
+  display: flex;
+  align-items: center;
+}
+
+.attendance-options .checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.attendance-options .checkbox-group input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+}
+
+.attendance-options .checkbox-group input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.btn-mark-attendance {
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-mark-attendance:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.btn-mark-attendance:disabled {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.weekend-days-selection {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: white;
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.weekend-days-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.weekend-days-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text-primary);
+}
+
+.weekend-days-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-select-all-weekends,
+.btn-deselect-all-weekends {
+  padding: 0.4rem 0.8rem;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+.btn-select-all-weekends:hover:not(:disabled),
+.btn-deselect-all-weekends:hover:not(:disabled) {
+  background: var(--color-bg-tertiary);
+}
+
+.btn-select-all-weekends:disabled,
+.btn-deselect-all-weekends:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.weekend-days-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.weekend-day-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s;
+}
+
+.weekend-day-checkbox:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.weekend-day-checkbox input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+}
+
+.weekend-day-checkbox input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.weekend-day-checkbox span {
+  font-size: 0.9rem;
+  color: var(--color-text-primary);
+}
+
+.weekend-day-checkbox span.weekend-holiday {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.weekend-days-summary {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  text-align: right;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-bg-tertiary);
+}
+
+.weekend-days-help {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 0.5rem 0 0 0;
+  padding: 0.75rem;
+  background: rgba(0, 123, 255, 0.1);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+}
+
+.rate-limit-warning {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  background: rgba(255, 193, 7, 0.1);
+  border-left: 3px solid #ffc107;
+  border-radius: var(--radius-sm);
+}
+
+.quick-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-quick-action {
+  padding: 0.5rem 1rem;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.btn-quick-action:hover:not(:disabled) {
+  background: var(--color-bg-tertiary);
+}
+
+.btn-quick-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.employee-single-form {
+  background: white;
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-bg-tertiary);
+}
+
+.attendance-calendar-section {
+  background: var(--color-bg-secondary);
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--color-bg-tertiary);
+}
+
+.attendance-calendar-section h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+.attendance-calendar-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.attendance-calendar-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.attendance-calendar-summary {
+  margin-bottom: 0.75rem;
+  color: var(--color-text-primary);
+}
+
+.attendance-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.5rem;
+  background: #fff;
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+}
+
+.attendance-day-chip {
+  border: 1px solid var(--color-bg-tertiary);
+  background: #fff;
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.35rem;
+  min-height: 42px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  position: relative;
+}
+
+/* Day-type tints (not selected) */
+.attendance-day-chip.day-saturday:not(.selected) {
+  background: #ede7f6;
+  border-color: #7e57c2;
+}
+.attendance-day-chip.day-sunday:not(.selected) {
+  background: #fff3e0;
+  border-color: #ef6c00;
+}
+.attendance-day-chip.day-holiday:not(.selected) {
+  background: #e3f2fd;
+  border-color: #1976d2;
+}
+
+.attendance-day-chip.selected {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+/* Keep day-type accent when selected */
+.attendance-day-chip.selected.day-saturday {
+  box-shadow: inset 3px 0 0 #7e57c2;
+}
+.attendance-day-chip.selected.day-sunday {
+  box-shadow: inset 3px 0 0 #ef6c00;
+}
+.attendance-day-chip.selected.day-holiday {
+  box-shadow: inset 3px 0 0 #1565c0;
+}
+
+.attendance-day-chip.half.selected {
+  opacity: 0.95;
+}
+
+.attendance-day-chip.existing {
+  box-shadow: inset 0 0 0 2px rgba(0, 123, 255, 0.2);
+}
+
+.attendance-day-num {
+  line-height: 1.1;
+}
+
+.attendance-half-mark {
+  font-size: 0.65rem;
+  font-weight: 800;
+  opacity: 0.95;
+  line-height: 1;
+}
+
+.attendance-day-chip:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.attendance-calendar-legend {
+  display: block;
+  margin-top: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.single-employee-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.employee-card-header {
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--color-bg-tertiary);
+}
+
+.employee-card-header h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.5rem;
+  color: var(--color-text-primary);
+}
+
+.employee-card-subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.employee-card-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.form-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-field-group label {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+}
+
+.form-field-group input,
+.form-field-group textarea,
+.form-field-group select {
+  padding: 0.75rem;
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-field-group input:focus,
+.form-field-group textarea:focus,
+.form-field-group select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.form-field-group input:disabled,
+.form-field-group textarea:disabled,
+.form-field-group select:disabled {
+  background-color: var(--color-bg-secondary);
+  cursor: not-allowed;
+}
+
+.notes-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.leaves-field-group {
+  grid-column: 1 / -1;
+}
+
+.leaves-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.leaves-list-single {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.leave-item-single {
+  display: grid;
+  grid-template-columns: 200px 1fr 1fr auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--color-bg-tertiary);
+}
+
+@media (max-width: 768px) {
+  .weekend-days-list {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .weekend-days-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .employee-card-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .leave-item-single {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-actions {
+    flex-direction: column;
+  }
+
+  .attendance-calendar-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .historical-data-toolbar {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .leave-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .leave-type-select,
+  .leave-date-input {
+    width: 100%;
+  }
+}

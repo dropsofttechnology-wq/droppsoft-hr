@@ -3,6 +3,9 @@ import { addMonths, addYears, isAfter, parseISO } from 'date-fns'
 import { ensureRolePermissionsSchema } from './rolePermissions.js'
 import { ensureLicenseOrdersSchema } from './licenseOrderQueries.js'
 import { ensureSchoolOperationalExpensesSchema } from './ensureSchoolOperationalExpensesSchema.js'
+import { ensureSchoolFeeLedgerSchema } from './ensureSchoolFeeLedgerSchema.js'
+import { ensureStudentDailyAttendanceSchema } from './ensureStudentDailyAttendanceSchema.js'
+import { ensureSchoolCbcGradingSchema } from './ensureSchoolCbcGradingSchema.js'
 
 const LAN_DEPLOYMENT_KEY = 'lan_deployment_id'
 
@@ -223,6 +226,9 @@ export function ensureSubscriptionSchema(db) {
   ensureRolePermissionsSchema(db)
   ensureLicenseOrdersSchema(db)
   ensureSchoolOperationalExpensesSchema(db)
+  ensureSchoolFeeLedgerSchema(db)
+  ensureStudentDailyAttendanceSchema(db)
+  ensureSchoolCbcGradingSchema(db)
   ensureAppSettingsSchema(db)
   ensureLicenseActivationLogSchema(db)
 

@@ -1,11 +1,96 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useCompany } from '../contexts/CompanyContext'
-import { databases, DATABASE_ID, COLLECTIONS } from '../config/appwrite'
-import { Query } from 'appwrite'
+import { useAuth } from '../contexts/AuthContext'
+import { isLocalDataSource } from '../config/dataSource'
+import { getCompanySettings, saveCompanySettingsBulk, testCompanySmtpConnection } from '../utils/settingsHelper'
+import { dispatchCompanySettingsUpdated } from '../utils/companySettingsEvents'
 import './Settings.css'
+
+/** Keys persisted for the Settings page (must match state fields below). */
+const SETTINGS_PAGE_KEYS = [
+  'pay_date',
+  'standard_allowance',
+  'housing_allowance',
+  'housing_allowance_type',
+  'overtime_rate',
+  'overtime_rate_type',
+  'shif_rate',
+  'shif_minimum',
+  'nssf_tier1_limit',
+  'nssf_tier2_limit',
+  'ahl_rate',
+  'personal_relief',
+  'working_hours',
+  'official_reporting_time',
+  'reporting_grace_minutes',
+  'clock_in_earliest',
+  'clock_in_latest',
+  'clock_out_earliest',
+  'clock_out_latest',
+  'minimum_time_gap',
+  'require_geolocation',
+  'face_min_brightness',
+  'face_max_brightness',
+  'face_min_contrast',
+  'face_min_sharpness',
+  'face_min_coverage',
+  'face_max_coverage',
+  'face_max_angle',
+  'face_detection_confidence',
+  'face_detection_throttle_ms',
+  'face_matching_threshold',
+  'face_matching_min_confidence',
+  'smtp_host',
+  'smtp_port',
+  'smtp_secure',
+  'smtp_user',
+  'smtp_pass',
+  'smtp_from',
+  'email_payslips_on_save',
+  'annual_leave_rollover',
+  'pdf_letterhead_logo_enabled',
+  'pdf_watermark_opacity',
+  'pdf_payslip_watermark_opacity'
+]
+
+/** Appwrite cloud only — local install uses System maintenance for auto-logout. */
+const CLOUD_AUTO_LOGOUT_KEYS = ['auto_logout_minutes']
+
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase()
+
+const inferSmtpDefaultsFromEmail = (email) => {
+  const e = normalizeEmail(email)
+  if (!e || !e.includes('@')) return null
+  const domain = e.split('@')[1] || ''
+  if (domain === 'gmail.com' || domain === 'googlemail.com') {
+    return { host: 'smtp.gmail.com', port: '587', secure: false }
+  }
+  if (
+    domain === 'outlook.com' ||
+    domain === 'hotmail.com' ||
+    domain === 'live.com' ||
+    domain === 'office365.com' ||
+    domain.endsWith('.onmicrosoft.com')
+  ) {
+    return { host: 'smtp.office365.com', port: '587', secure: false }
+  }
+  if (domain === 'yahoo.com' || domain === 'ymail.com') {
+    return { host: 'smtp.mail.yahoo.com', port: '465', secure: true }
+  }
+  if (domain === 'zoho.com') {
+    return { host: 'smtp.zoho.com', port: '465', secure: true }
+  }
+  return null
+}
 
 const Settings = () => {
   const { currentCompany } = useCompany()
+  const { user } = useAuth()
+  const role = user?.prefs?.role || 'admin'
+  const showUsersLink =
+    isLocalDataSource() && (role === 'admin' || role === 'super_admin' || role === 'manager')
   const [settings, setSettings] = useState({
     // Payroll Settings
     pay_date: '25',
@@ -25,6 +110,8 @@ const Settings = () => {
     
     // Attendance Settings
     working_hours: '8',
+    official_reporting_time: '08:00',
+    reporting_grace_minutes: '15',
     clock_in_earliest: '06:00',
     clock_in_latest: '10:00',
     clock_out_earliest: '16:00',
@@ -43,10 +130,30 @@ const Settings = () => {
     face_detection_confidence: '0.4',
     face_detection_throttle_ms: '150',
     face_matching_threshold: '0.35',
-    face_matching_min_confidence: '65'
+    face_matching_min_confidence: '65',
+
+    smtp_host: '',
+    smtp_port: '587',
+    smtp_secure: false,
+    smtp_user: '',
+    smtp_pass: '',
+    smtp_from: '',
+    email_payslips_on_save: false,
+
+    // Leave: when true, employees may book against current + next calendar year pool; when false, only this year's balance
+    annual_leave_rollover: true,
+
+    // Session: 0 = no automatic logout
+    auto_logout_minutes: '0',
+
+    // PDF: letterhead uses company logo from Companies; diagonal watermark always on PDFs (not CSV)
+    pdf_letterhead_logo_enabled: true,
+    pdf_watermark_opacity: '0.52',
+    pdf_payslip_watermark_opacity: ''
   })
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [testingSmtp, setTestingSmtp] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -56,29 +163,50 @@ const Settings = () => {
     }
   }, [currentCompany])
 
+  const getSettingsLoadKeys = () =>
+    isLocalDataSource() ? SETTINGS_PAGE_KEYS : [...SETTINGS_PAGE_KEYS, ...CLOUD_AUTO_LOGOUT_KEYS]
+
   const loadSettings = async () => {
     if (!currentCompany) return
 
     try {
       setLoading(true)
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.SETTINGS,
-        [
-          Query.equal('company_id', currentCompany.$id),
-          Query.limit(5000)
-        ]
-      )
+      const keys = getSettingsLoadKeys()
+      const loaded = await getCompanySettings(currentCompany.$id, keys)
 
-      const loadedSettings = {}
-      response.documents.forEach(doc => {
-        loadedSettings[doc.setting_key] = doc.setting_value
+      setSettings((prev) => {
+        const next = { ...prev }
+        for (const key of keys) {
+          const v = loaded[key]
+          if (v == null || v === undefined) continue
+          if (
+            key === 'require_geolocation' ||
+            key === 'smtp_secure' ||
+            key === 'email_payslips_on_save' ||
+            key === 'annual_leave_rollover' ||
+            key === 'pdf_letterhead_logo_enabled'
+          ) {
+            next[key] = v === true || v === 'true'
+          } else {
+            next[key] = v
+          }
+        }
+
+        if (isLocalDataSource()) {
+          const companyEmail = normalizeEmail(currentCompany?.email || '')
+          if (!next.smtp_user && companyEmail) next.smtp_user = companyEmail
+          if (!next.smtp_from && companyEmail) next.smtp_from = companyEmail
+
+          const basisEmail = next.smtp_user || next.smtp_from || companyEmail
+          const inferred = inferSmtpDefaultsFromEmail(basisEmail)
+          if (inferred) {
+            if (!next.smtp_host) next.smtp_host = inferred.host
+            if (!next.smtp_port || String(next.smtp_port).trim() === '0') next.smtp_port = inferred.port
+            if (loaded.smtp_secure == null) next.smtp_secure = inferred.secure
+          }
+        }
+        return next
       })
-
-      setSettings(prev => ({
-        ...prev,
-        ...loadedSettings
-      }))
     } catch (error) {
       console.error('Error loading settings:', error)
     } finally {
@@ -94,56 +222,17 @@ const Settings = () => {
       setError('')
       setSuccess('')
 
-      // Get existing settings
-      const existing = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.SETTINGS,
-        [
-          Query.equal('company_id', currentCompany.$id),
-          Query.limit(5000)
-        ]
-      )
-
-      const existingMap = {}
-      existing.documents.forEach(doc => {
-        existingMap[doc.setting_key] = doc.$id
-      })
-
-      // Save or update each setting
-      for (const [key, value] of Object.entries(settings)) {
-        const settingValue = String(value)
-        
-        if (existingMap[key]) {
-          // Update existing
-          await databases.updateDocument(
-            DATABASE_ID,
-            COLLECTIONS.SETTINGS,
-            existingMap[key],
-            {
-              setting_value: settingValue,
-              updated_at: new Date().toISOString()
-            }
-          )
-        } else {
-          // Create new
-          await databases.createDocument(
-            DATABASE_ID,
-            COLLECTIONS.SETTINGS,
-            'unique()',
-            {
-              company_id: currentCompany.$id,
-              setting_key: key,
-              setting_value: settingValue,
-              updated_at: new Date().toISOString()
-            }
-          )
-        }
+      const keys = getSettingsLoadKeys()
+      const payload = {}
+      for (const k of keys) {
+        if (k in settings) payload[k] = settings[k]
       }
+      await saveCompanySettingsBulk(currentCompany.$id, payload)
 
-      setSuccess('Settings saved successfully!')
-      setTimeout(() => setSuccess(''), 3000)
+      dispatchCompanySettingsUpdated(currentCompany.$id)
+      toast.success('Settings saved successfully!')
     } catch (error) {
-      setError('Failed to save settings: ' + error.message)
+      toast.error('Failed to save settings: ' + error.message)
     } finally {
       setSaving(false)
     }
@@ -151,10 +240,91 @@ const Settings = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
-    setSettings(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }))
+    setSettings((prev) => {
+      const next = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }
+
+      // Autofill SMTP defaults from sender mailbox where fields are missing.
+      if (name === 'smtp_user' || name === 'smtp_from') {
+        const basisEmail = normalizeEmail(name === 'smtp_user' ? value : next.smtp_user) ||
+          normalizeEmail(name === 'smtp_from' ? value : next.smtp_from)
+        const inferred = inferSmtpDefaultsFromEmail(basisEmail)
+        if (inferred) {
+          if (!next.smtp_host) next.smtp_host = inferred.host
+          if (!next.smtp_port || String(next.smtp_port).trim() === '0') next.smtp_port = inferred.port
+          if (name === 'smtp_user' && !next.smtp_from && basisEmail) next.smtp_from = basisEmail
+          if (name === 'smtp_from' && !next.smtp_user && basisEmail) next.smtp_user = basisEmail
+        }
+      }
+      return next
+    })
+  }
+
+  const handlePrefillSmtpFromCompany = () => {
+    const companyEmail = normalizeEmail(currentCompany?.email || '')
+    if (!companyEmail || !companyEmail.includes('@')) {
+      toast.error('Company email is missing or invalid. Update company email first.')
+      return
+    }
+
+    setSettings((prev) => {
+      const next = { ...prev }
+      let changed = 0
+
+      if (!next.smtp_user) {
+        next.smtp_user = companyEmail
+        changed += 1
+      }
+      if (!next.smtp_from) {
+        next.smtp_from = companyEmail
+        changed += 1
+      }
+
+      const inferred = inferSmtpDefaultsFromEmail(next.smtp_user || next.smtp_from || companyEmail)
+      if (inferred) {
+        if (!next.smtp_host) {
+          next.smtp_host = inferred.host
+          changed += 1
+        }
+        if (!next.smtp_port || String(next.smtp_port).trim() === '0') {
+          next.smtp_port = inferred.port
+          changed += 1
+        }
+        if (!next.smtp_secure) {
+          next.smtp_secure = inferred.secure
+          changed += inferred.secure ? 1 : 0
+        }
+      }
+
+      if (changed > 0) {
+        toast.success(`SMTP prefill applied (${changed} field${changed === 1 ? '' : 's'} updated).`)
+      } else {
+        toast('SMTP fields already filled. No changes made.')
+      }
+      return next
+    })
+  }
+
+  const handleTestSmtpConnection = async () => {
+    if (!currentCompany?.$id) return
+    try {
+      setTestingSmtp(true)
+      setError('')
+      const result = await testCompanySmtpConnection(currentCompany.$id)
+      const cfg = result?.config || {}
+      toast.success('SMTP test successful.')
+      setSuccess(
+        `SMTP connected: ${cfg.host || 'host'}:${cfg.port || ''} | secure=${cfg.secure ? 'yes' : 'no'} | from=${cfg.from || 'n/a'}`
+      )
+    } catch (e) {
+      const msg = e?.message || 'SMTP test failed'
+      setError(msg)
+      toast.error(msg)
+    } finally {
+      setTestingSmtp(false)
+    }
   }
 
   if (!currentCompany) {
@@ -175,6 +345,17 @@ const Settings = () => {
     <div className="settings-page">
       <div className="page-header">
         <h1>Company Settings</h1>
+        {showUsersLink && (
+          <p className="settings-users-shortcut">
+            <Link to="/settings/user-roles">Users &amp; roles</Link> — add logins and assign access.
+          </p>
+        )}
+        {isLocalDataSource() && (
+          <p className="settings-users-shortcut">
+            <Link to="/settings/pairing">Mobile pairing (QR)</Link> — show a QR code so the Android app can connect to this
+            server.
+          </p>
+        )}
         <button
           className="btn-primary"
           onClick={saveSettings}
@@ -295,12 +476,62 @@ const Settings = () => {
           </div>
         </div>
 
+        <div className="settings-section">
+          <h2>PDF &amp; reports (branding)</h2>
+          <p className="settings-hint" style={{ marginBottom: '1rem' }}>
+            Upload or change the <strong>company logo</strong> and PDF watermark strength on the{' '}
+            <Link to="/companies">Companies</Link> page (same settings apply here). All PDF exports include a diagonal
+            watermark; CSV exports do not.
+          </p>
+          <div className="form-group">
+            <label>
+              <input
+                type="checkbox"
+                name="pdf_letterhead_logo_enabled"
+                checked={settings.pdf_letterhead_logo_enabled}
+                onChange={handleInputChange}
+              />
+              Show company logo in PDF letterhead (top of payslips, payroll list, statutory reports)
+            </label>
+          </div>
+          <div className="form-group">
+            <label>Watermark strength — payroll list &amp; reports (0.15–1.25)</label>
+            <input
+              type="number"
+              name="pdf_watermark_opacity"
+              value={settings.pdf_watermark_opacity}
+              onChange={handleInputChange}
+              min="0.15"
+              max="1.25"
+              step="0.01"
+            />
+            <small>Default 0.52. Higher = more visible diagonal watermark on large PDFs.</small>
+          </div>
+          <div className="form-group">
+            <label>Payslip watermark strength (0.15–1.25)</label>
+            <input
+              type="number"
+              name="pdf_payslip_watermark_opacity"
+              value={settings.pdf_payslip_watermark_opacity}
+              onChange={handleInputChange}
+              min="0.15"
+              max="1.25"
+              step="0.01"
+              placeholder="Auto"
+            />
+            <small>
+              Individual payslips use a denser layout — use a higher value (e.g. 0.82–1.0) for a clearer stamp. Leave
+              empty for automatic strength based on the general watermark setting above.
+            </small>
+          </div>
+        </div>
+
         {/* Statutory Rates */}
         <div className="settings-section">
           <h2>Statutory Deduction Rates</h2>
           
           <div className="form-group">
-            <label>SHIF Rate (%)</label>
+            <label>S.H.I.F rate (%)</label>
             <input
               type="number"
               name="shif_rate"
@@ -314,7 +545,7 @@ const Settings = () => {
           </div>
 
           <div className="form-group">
-            <label>SHIF Minimum (KES)</label>
+            <label>S.H.I.F minimum (KES)</label>
             <input
               type="number"
               name="shif_minimum"
@@ -380,6 +611,50 @@ const Settings = () => {
           </div>
         </div>
 
+        {!isLocalDataSource() && (
+        <div className="settings-section">
+          <h2>Session &amp; security</h2>
+          <div className="form-group">
+            <label>Automatic logout after inactivity (minutes)</label>
+            <input
+              type="number"
+              name="auto_logout_minutes"
+              value={settings.auto_logout_minutes}
+              onChange={handleInputChange}
+              min="0"
+              max="10080"
+              step="1"
+            />
+            <small>
+              0 = never log out automatically. When set, users are signed out after this many minutes
+              of no mouse, keyboard, or scroll activity. Maximum 10,080 (7 days). Applies to this company
+              for all users. On the local PC app, configure this under Settings → System maintenance.
+            </small>
+          </div>
+        </div>
+        )}
+
+        {/* Leave */}
+        <div className="settings-section">
+          <h2>Leave</h2>
+          <div className="form-group">
+            <label>
+              <input
+                type="checkbox"
+                name="annual_leave_rollover"
+                checked={settings.annual_leave_rollover}
+                onChange={handleInputChange}
+              />
+              Allow annual leave rollover (book using next year&apos;s entitlement)
+            </label>
+            <small>
+              When enabled, employees can request leave up to their current-year balance plus unused next-year pool (as
+              shown on the leave request form). When disabled, requests are limited to this calendar year&apos;s accrued
+              balance only; unused days do not carry forward for booking purposes.
+            </small>
+          </div>
+        </div>
+
         {/* Attendance Settings */}
         <div className="settings-section">
           <h2>Attendance Settings</h2>
@@ -395,6 +670,32 @@ const Settings = () => {
               max="24"
               step="0.5"
             />
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label>Official Reporting Time</label>
+              <input
+                type="time"
+                name="official_reporting_time"
+                value={settings.official_reporting_time}
+                onChange={handleInputChange}
+              />
+              <small>Expected time staff should report (e.g. 08:00)</small>
+            </div>
+            <div className="form-group">
+              <label>Reporting Grace Period (minutes)</label>
+              <input
+                type="number"
+                name="reporting_grace_minutes"
+                value={settings.reporting_grace_minutes}
+                onChange={handleInputChange}
+                min="0"
+                max="120"
+                step="1"
+              />
+              <small>Clock-in within this many minutes after official time still counts as on time (e.g. 15)</small>
+            </div>
           </div>
 
           <div className="form-row">
@@ -628,6 +929,130 @@ const Settings = () => {
             </div>
           </div>
         </div>
+
+        {isLocalDataSource() && (
+          <div className="settings-section">
+            <h2>Payslip email (SMTP)</h2>
+            <p className="settings-section-desc">
+              Configure outgoing mail so payslips can be sent as PDF attachments to each employee&apos;s{' '}
+              <strong>work email</strong> (field on the employee profile). You can also enable automatic sends after
+              payroll is saved. For Gmail or Outlook, use an app password if required.
+            </p>
+            <div className="form-group">
+              <label>
+                <input
+                  type="checkbox"
+                  name="email_payslips_on_save"
+                  checked={!!settings.email_payslips_on_save}
+                  onChange={handleInputChange}
+                />{' '}
+                Automatically email payslips when payroll is saved for a period
+              </label>
+            </div>
+            <div className="form-group">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handlePrefillSmtpFromCompany}
+              >
+                Prefill from company email
+              </button>
+              <small>
+                Uses company email to autofill sender and common provider defaults (Gmail, Outlook, Yahoo, Zoho) without
+                overwriting existing values.
+              </small>
+            </div>
+            <div className="form-group">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleTestSmtpConnection}
+                disabled={testingSmtp}
+              >
+                {testingSmtp ? 'Testing SMTP…' : 'Test SMTP connection'}
+              </button>
+              <small>
+                Verifies connection and login to the configured SMTP server without sending any employee email.
+              </small>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>SMTP host</label>
+                <input
+                  type="text"
+                  name="smtp_host"
+                  value={settings.smtp_host}
+                  onChange={handleInputChange}
+                  placeholder="smtp.example.com"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="form-group">
+                <label>Port</label>
+                <input
+                  type="number"
+                  name="smtp_port"
+                  value={settings.smtp_port}
+                  onChange={handleInputChange}
+                  min="1"
+                  max="65535"
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>
+                <input
+                  type="checkbox"
+                  name="smtp_secure"
+                  checked={!!settings.smtp_secure}
+                  onChange={handleInputChange}
+                />{' '}
+                Use TLS/SSL (typical for port 465)
+              </label>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>SMTP username (optional)</label>
+                <input
+                  type="text"
+                  name="smtp_user"
+                  value={settings.smtp_user}
+                  onChange={handleInputChange}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="form-group">
+                <label>SMTP password (optional)</label>
+                <input
+                  type="password"
+                  name="smtp_pass"
+                  value={settings.smtp_pass}
+                  onChange={handleInputChange}
+                  autoComplete="new-password"
+                  placeholder="App password if required"
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>From address</label>
+              <input
+                type="email"
+                name="smtp_from"
+                value={settings.smtp_from}
+                onChange={handleInputChange}
+                placeholder="hr@yourcompany.com"
+              />
+              <small>Shown as the sender. Often matches the mailbox used to send.</small>
+            </div>
+            <p className="settings-section-desc">
+              <small>
+                Optional: set environment variables <code>HR_SMTP_HOST</code>, <code>HR_SMTP_PORT</code>,{' '}
+                <code>HR_SMTP_USER</code>, <code>HR_SMTP_PASS</code>, <code>HR_SMTP_FROM</code>,{' '}
+                <code>HR_SMTP_SECURE</code> (true/false) to override stored values on this machine.
+              </small>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

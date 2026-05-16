@@ -1,0 +1,54 @@
+.holidays-page {
+  padding: 2rem;
+}
+
+.page-description {
+  color: var(--color-text-secondary);
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.holidays-table-container {
+  background: white;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.holidays-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.holidays-table thead {
+  background: var(--color-bg-tertiary);
+}
+
+.holidays-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  border-bottom: 2px solid var(--color-bg-tertiary);
+}
+
+.holidays-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+.holidays-table tbody tr:hover {
+  background: var(--color-bg-primary);
+}
+
+.form-description {
+  font-size: 0.75rem;
+  color: var(--color-text-light);
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+
+.required {
+  color: var(--color-accent-red);
+}

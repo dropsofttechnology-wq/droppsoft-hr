@@ -1,6 +1,115 @@
 import { calculateOvertime } from './timesheet'
+import {
+  eachDayOfInterval,
+  endOfMonth,
+  isSunday,
+  parseISO,
+  startOfDay,
+  startOfMonth,
+  subMonths
+} from 'date-fns'
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100
+
+/**
+ * Calendar day belongs to `period` payroll run (yyyy-MM) for pay-date–split logic.
+ * Window: [previous month pay_date…end] ∪ [current month 1…pay_date − 1].
+ * Any day in the current month on or after `payDate` is counted in the **next** run’s deduction.
+ * @param {Date} d
+ * @param {string} period
+ * @param {number} payDate
+ */
+function dayIsInPayrollRunWindow(d, period, payDate = 25) {
+  if (!period) return false
+  const pd = Math.min(31, Math.max(1, Number(payDate) || 25))
+  const curStart = startOfMonth(parseISO(`${period}-01`))
+  const prevStart = startOfMonth(subMonths(curStart, 1))
+  const curY = curStart.getFullYear()
+  const curM = curStart.getMonth()
+  const prevY = prevStart.getFullYear()
+  const prevM = prevStart.getMonth()
+  const d0 = d instanceof Date ? startOfDay(d) : startOfDay(parseISO(String(d).slice(0, 10)))
+  if (Number.isNaN(d0.getTime())) return false
+  const dn = d0.getDate()
+  const y = d0.getFullYear()
+  const m = d0.getMonth()
+  if (y === curY && m === curM) return dn < pd
+  if (y === prevY && m === prevM) return dn >= pd
+  return false
+}
+
+/** Whole KES — same as `net_pay` in calculatePayrollLine (for reports / bank totals). */
+export const roundNetPay = (n) => {
+  const x = Number(n)
+  if (!Number.isFinite(x)) return 0
+  return Math.round(round2(x))
+}
+
+/**
+ * Map leave_code → pay % (0–100). 100 = fully paid; 0 = unpaid (deduct full daily amount from gross).
+ * @param {Array<{ leave_code?: string, pay_percentage?: number }>} leaveTypes
+ * @returns {Map<string, number>}
+ */
+export function buildLeaveTypePayMap(leaveTypes = []) {
+  const m = new Map()
+  for (const lt of leaveTypes) {
+    const code = String(lt.leave_code || '').toUpperCase().trim()
+    if (!code) continue
+    let pct = lt.pay_percentage
+    if (pct == null || Number.isNaN(Number(pct))) {
+      pct = code === 'UNPAID' ? 0 : 100
+    }
+    m.set(code, Math.max(0, Math.min(100, Number(pct))))
+  }
+  return m
+}
+
+/**
+ * Unpaid leave day equivalents for this payroll period (100 − pay%) × calendar days.
+ * Uses company pay date: only days in this run’s window are counted (see `dayIsInPayrollRunWindow`).
+ * Daily rate applied elsewhere: (Basic + HSE) ÷ 30.
+ *
+ * @param {{ employeeId: string, period: string, approvedLeaves: Array, leaveTypePayMap: Map<string, number>, payDate?: number }} p
+ * @returns {number} Day equivalents (can be fractional when pay% is e.g. 50)
+ */
+export function computeUnpaidLeaveDayEquivalents({
+  employeeId,
+  period,
+  approvedLeaves,
+  leaveTypePayMap,
+  payDate = 25
+}) {
+  const empId = String(employeeId || '').trim()
+  if (!empId || !period) return 0
+  const pd = Math.min(31, Math.max(1, Number(payDate) || 25))
+  const curStart = startOfMonth(parseISO(`${period}-01`))
+  const curEnd = endOfMonth(curStart)
+  const prevStart = startOfMonth(subMonths(curStart, 1))
+
+  let total = 0
+  for (const req of approvedLeaves || []) {
+    if (String(req.employee_id || '').trim() !== empId) continue
+    const code = String(req.leave_type || '').toUpperCase().trim()
+    const payPct = leaveTypePayMap.has(code)
+      ? leaveTypePayMap.get(code)
+      : code === 'UNPAID'
+        ? 0
+        : 100
+    if (payPct >= 100) continue
+    const ls = startOfDay(parseISO(String(req.start_date).slice(0, 10)))
+    const le = startOfDay(parseISO(String(req.end_date).slice(0, 10)))
+    if (Number.isNaN(ls.getTime()) || Number.isNaN(le.getTime()) || le < ls) continue
+    const overlapStart = ls < prevStart ? prevStart : ls
+    const overlapEnd = le > curEnd ? curEnd : le
+    if (overlapEnd < overlapStart) continue
+    const fraction = (100 - payPct) / 100
+    const days = eachDayOfInterval({ start: overlapStart, end: overlapEnd })
+    for (const d of days) {
+      if (dayIsInPayrollRunWindow(d, period, pd)) total += fraction
+    }
+  }
+  return total
+}
 
 export const computePAYE = (taxablePay, personalRelief = 2400) => {
   const pay = Math.max(0, Number(taxablePay) || 0)
@@ -25,6 +134,13 @@ export const computePAYE = (taxablePay, personalRelief = 2400) => {
   return round2(Math.max(0, tax - relief))
 }
 
+/** NSSF: nearest whole KES (two decimals shown as .00 in UI/reports). */
+export const roundNSSFAmount = (n) => {
+  const x = Number(n)
+  if (!Number.isFinite(x)) return 0
+  return Math.round(round2(x))
+}
+
 export const computeNSSF = (grossPay, tier1Limit = 7000, tier2UpperLimit = 36000) => {
   const gross = Math.max(0, Number(grossPay) || 0)
   const t1 = Math.max(0, Number(tier1Limit) || 7000)
@@ -36,14 +152,14 @@ export const computeNSSF = (grossPay, tier1Limit = 7000, tier2UpperLimit = 36000
   const tier2Base = Math.max(0, Math.min(gross, t2) - t1)
   const tier2 = tier2Base * 0.06
 
-  const employee = round2(tier1 + tier2)
-  const employer = round2(tier1 + tier2)
+  const employee = roundNSSFAmount(tier1 + tier2)
+  const employer = employee
 
   return {
     nssf_employee: employee,
     nssf_employer: employer,
-    tier1: round2(tier1),
-    tier2: round2(tier2)
+    tier1: Math.round(round2(tier1)),
+    tier2: Math.round(round2(tier2))
   }
 }
 
@@ -155,7 +271,84 @@ export const computeOvertimePay = ({
   }
 }
 
-export const calculatePayrollLine = ({ employee, attendanceRecords, period, settings, employeeDeduction = null }) => {
+/**
+ * SUN/HOLIDAY: premium for (1) company holidays and (2) Sundays when the day has attendance.
+ * "Included in attendance" is represented by an attendance record for that date.
+ * Per qualifying day: (Basic + HSE allow) / 30 × (holiday rate % / 100), or the same day-pay for Sunday-only.
+ * HSE = housing allowance; standard / other fixed allowances are not in this day rate.
+ * If a day is both Sunday and a public holiday, the holiday rate applies once (not double).
+ * Uses the same pay-date window as unpaid leave (`dayIsInPayrollRunWindow`).
+ * @param {number} monthlyBaseBasicHse - Basic + housing allowance (monthly)
+ * @param {Array} attendanceRecords - { date }[]
+ * @param {Array} holidaysInPeriod - { holiday_date, rate_type, rate }[] (active only)
+ * @param {string} period - yyyy-MM payroll period
+ * @param {number} payDate - 1..31 configured pay date
+ */
+const computeHolidayPay = (
+  monthlyBaseBasicHse,
+  attendanceRecords,
+  holidaysInPeriod,
+  period,
+  payDate = 25,
+  workingHours = 8
+) => {
+  if (!attendanceRecords?.length) return 0
+  if (!period) return 0
+  const pd = Math.min(31, Math.max(1, Number(payDate) || 25))
+  const wh = Math.max(0.1, Number(workingHours) || 8)
+
+  /** Per calendar date: 0–1 of a standard day, from hours_worked (half day = 0.5 for Sunday/holiday top-up). */
+  const dayFraction = new Map()
+  for (const rec of attendanceRecords) {
+    const ds = String(rec.date || '').slice(0, 10)
+    if (!ds) continue
+    const hwRaw = rec.hours_worked
+    const frac =
+      hwRaw == null || hwRaw === '' || !Number.isFinite(Number(hwRaw))
+        ? 1
+        : Math.min(1, Math.max(0, Number(hwRaw) / wh))
+    dayFraction.set(ds, Math.max(dayFraction.get(ds) || 0, frac))
+  }
+
+  const base = Math.max(0, Number(monthlyBaseBasicHse) || 0)
+  const dailyRate = base / 30
+  const holidayByDate = new Map(
+    (holidaysInPeriod || [])
+      .map((h) => [String(h.holiday_date || '').slice(0, 10), h])
+      .filter(([d]) => !!d)
+  )
+  const attendedDates = new Set(
+    (attendanceRecords || [])
+      .map((r) => String(r.date || '').slice(0, 10))
+      .filter(Boolean)
+  )
+  let total = 0
+  for (const date of attendedDates) {
+    const ds = String(date).slice(0, 10)
+    const d = startOfDay(parseISO(ds))
+    if (Number.isNaN(d.getTime()) || !dayIsInPayrollRunWindow(d, period, pd)) continue
+    const f = dayFraction.get(ds) ?? 1
+    const holiday = holidayByDate.get(ds)
+    if (holiday) {
+      const ratePct = holiday.rate_type === 'normal' ? 100 : (Number(holiday.rate) || 100)
+      total += dailyRate * (ratePct / 100) * f
+    } else if (isSunday(d)) {
+      total += dailyRate * f
+    }
+  }
+  return round2(total)
+}
+
+export const calculatePayrollLine = ({
+  employee,
+  attendanceRecords,
+  period,
+  settings,
+  employeeDeduction = null,
+  holidaysInPeriod = [],
+  /** Day equivalents at (Basic+HSE)/30 for approved leave where leave type pay % is below 100 */
+  unpaidLeaveDayEquivalents = 0
+}) => {
   const basicSalary = Number(employee.basic_salary) || 0
 
   const allowances = computeAllowances({
@@ -167,12 +360,10 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
 
   // Gross Pay = Total Fixed Monthly Remuneration (EARNINGS)
   // Formula: Basic Pay + House Allowance (HSE ALLOW) + Other Monthly Allowances
-  // According to Kenyan law: Basic Salary + House Allowance + Other Fixed Monthly Allowances
-  // This is the "wages" used for absence deduction calculations
-  // CRITICAL: HSE ALLOW is an EARNING, not a deduction
-  // CRITICAL: This MUST include allowances, NOT just basic salary
   const grossPay = round2(basicSalary + allowances.allowances_total)
-  
+  // Day rate for SUN/HOLIDAY and absence: (Basic + HSE) / 30 only (excludes e.g. standard allowance)
+  const baseBasicHse = round2(basicSalary + allowances.housing_allowance)
+
   // Safety check: If grossPay equals basicSalary, it means allowances are 0 or missing
   if (grossPay === basicSalary && allowances.allowances_total === 0) {
     console.warn(`[Payroll] Employee ${employee.name || employee.employee_id}: No allowances configured. Gross Pay = Basic Salary only.`)
@@ -186,50 +377,50 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
     overtimeRate: settings.overtime_rate ?? 0
   })
 
-  const holidayPay = 0
+  // SUN/HOLIDAY: (Basic + HSE) / 30 per attended Sunday, and per attended holiday per rate %
+  const holidayPay = computeHolidayPay(
+    baseBasicHse,
+    attendanceRecords || [],
+    holidaysInPeriod,
+    period,
+    settings.pay_date,
+    settings.working_hours ?? 8
+  )
   
   // Calculate gross before deductions (includes overtime and holiday pay)
   const grossBeforeDeductions = round2(grossPay + overtime.overtime_pay + holidayPay)
   
-  // Calculate absence deduction: (Gross Pay / 30) * absent days
-  // Gross Pay = Total Fixed Monthly Remuneration (Basic + House Allowance + Other Fixed Allowances)
-  // This is per Kenyan law where "wages" refers to Total Fixed Monthly Remuneration
-  // 
-  // CRITICAL: We MUST use grossPay (Basic + Allowances), NOT basicSalary alone
-  // Formula: Absence Deduction = (Gross Pay / 30) × Absent Days
-  // Where Gross Pay = Basic Salary + House Allowance + Other Fixed Monthly Allowances
+  // Absence (manual + unpaid leave): (Basic + HSE) / 30 × day equivalents
   const absentDays = employeeDeduction?.absent_days ? Number(employeeDeduction.absent_days) : 0
-  
-  // Ensure we're using grossPay, not basicSalary
-  // grossPay = basicSalary + allowances.allowances_total (already calculated above)
-  const dailyRate = grossPay / 30
-  const absenceDeduction = round2(dailyRate * absentDays)
-  
-  // Debug logging to verify calculation (always log when absent days > 0)
+  const unpaidEq = Math.max(0, Number(unpaidLeaveDayEquivalents) || 0)
+
+  const dailyRate = baseBasicHse / 30
+  const manualAbsenceDeduction = round2(dailyRate * absentDays)
+  const unpaidLeaveDeduction = round2(dailyRate * unpaidEq)
+  const absenceDeduction = round2(manualAbsenceDeduction + unpaidLeaveDeduction)
+
   if (absentDays > 0) {
-    const basicOnlyCalculation = round2((basicSalary / 30) * absentDays)
-    const correctCalculation = round2((grossPay / 30) * absentDays)
-    
-    console.log(`[Absence Deduction Calculation] ${employee.name || employee.employee_id || 'Unknown'}:`, {
-      'Basic Salary': `KES ${basicSalary.toFixed(2)}`,
-      'Standard Allowance': `KES ${allowances.standard_allowance.toFixed(2)}`,
-      'Housing Allowance': `KES ${allowances.housing_allowance.toFixed(2)}`,
-      'Total Allowances': `KES ${allowances.allowances_total.toFixed(2)}`,
-      'Gross Pay (Basic + Allowances)': `KES ${grossPay.toFixed(2)}`,
-      'Absent Days': absentDays,
-      'Daily Rate (Gross Pay / 30)': `KES ${dailyRate.toFixed(2)}`,
-      '✅ CORRECT Calculation (Gross Pay / 30 × Days)': `KES ${correctCalculation.toFixed(2)}`,
-      '❌ WRONG Calculation (Basic / 30 × Days)': `KES ${basicOnlyCalculation.toFixed(2)}`,
-      'Difference': `KES ${(correctCalculation - basicOnlyCalculation).toFixed(2)}`,
-      'Actual Deduction Applied': `KES ${absenceDeduction.toFixed(2)}`
+    const expectedManual = round2((baseBasicHse / 30) * absentDays)
+    console.log(`[Absence Deduction] ${employee.name || employee.employee_id || 'Unknown'}:`, {
+      'Basic + HSE (monthly)': `KES ${baseBasicHse.toFixed(2)}`,
+      'Daily (Basic+HSE / 30)': `KES ${dailyRate.toFixed(2)}`,
+      'Absent days': absentDays,
+      'Manual absence deduction': `KES ${manualAbsenceDeduction.toFixed(2)}`,
+      expected: `KES ${expectedManual.toFixed(2)}`
     })
-    
-    // Verify the calculation matches
-    if (Math.abs(absenceDeduction - correctCalculation) > 0.01) {
-      console.error(`[ERROR] Absence deduction mismatch! Expected: ${correctCalculation}, Got: ${absenceDeduction}`)
+    if (Math.abs(manualAbsenceDeduction - expectedManual) > 0.01) {
+      console.error(`[ERROR] Absence deduction mismatch! Expected: ${expectedManual}, Got: ${manualAbsenceDeduction}`)
     }
   }
-  
+
+  if (unpaidEq > 0) {
+    console.log(`[Unpaid leave deduction] ${employee.name || employee.employee_id || 'Unknown'}:`, {
+      'Unpaid leave day equivalents': unpaidEq,
+      'Daily rate (Basic+HSE / 30)': `KES ${dailyRate.toFixed(2)}`,
+      'Unpaid leave deduction': `KES ${unpaidLeaveDeduction.toFixed(2)}`
+    })
+  }
+
   // Validation: If someone accidentally uses basicSalary, this will catch it
   if (absentDays > 0 && grossPay <= basicSalary) {
     console.warn(`[WARNING] Gross Pay (${grossPay}) should be greater than Basic Salary (${basicSalary}) for absence deduction calculation.`)
@@ -240,15 +431,11 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
   const advanceAmount = employeeDeduction?.advance_amount ? Number(employeeDeduction.advance_amount) : 0
   const shoppingAmount = employeeDeduction?.shopping_amount ? Number(employeeDeduction.shopping_amount) : 0
   
-  // TOTAL EARN = Basic Pay + HSE ALLOW + Other Monthly Allowances + Overtime + Holiday Pay
-  // Formula: TOTAL_EARN = BASIC_PAY + HSE_ALLOW + OTHER_EARNINGS
-  // This is the gross before any deductions
-  // CRITICAL: HSE ALLOW is part of earnings, NOT a deduction
-  const totalEarn = round2(grossBeforeDeductions)
-  
-  // Gross Pay After Absence (absence is a PRE-TAX deduction)
-  // Absence deduction reduces gross before calculating statutory deductions and tax
+  // Gross Pay After Absence (absence / unpaid leave is a PRE-TAX deduction)
   const grossAfterAbsence = round2(grossBeforeDeductions - absenceDeduction)
+
+  // TOTAL EARN (reporting): earnings after absence / unpaid leave — same base as statutory (SHIF, NSSF, AHL)
+  const totalEarn = round2(grossAfterAbsence)
 
   // Statutory Deductions (calculated from Gross After Absence, NOT including advance/shopping)
   // SHIF and NSSF are calculated from gross after absence deduction only
@@ -256,12 +443,13 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
   const shif = computeSHIF(grossAfterAbsence, settings.shif_rate ?? 2.75, settings.shif_minimum ?? 300)
   const nssf = computeNSSF(grossAfterAbsence, settings.nssf_tier1_limit ?? 7000, settings.nssf_tier2_limit ?? 36000)
   
-  // HOUSING LEVY (AHL) must be calculated as 1.5% of TOTAL EARN (before absence deduction)
+  // HOUSING LEVY (AHL) is calculated from TOTAL EARN minus ABSENCE
+  // Base = Gross After Absence (same as SHIF/NSSF base):
+  //   (TOTAL EARNINGS - Absence Deduction) × AHL rate
   // CRITICAL: This is DIFFERENT from HSE ALLOW which is an earning
   // - HSE ALLOW is added to Basic Pay to calculate TOTAL EARN (it's an earning)
-  // - HOUSING LEVY is 1.5% of TOTAL EARN and is a deduction
-  // - These are two separate accounting entries that should never be confused
-  const ahl = computeAHL(totalEarn, settings.ahl_rate ?? 1.5)
+  // - HOUSING LEVY is a DEDUCTION taken as a % of earnings after absence
+  const ahl = computeAHL(grossAfterAbsence, settings.ahl_rate ?? 1.5)
 
   // Taxable Pay = Gross After Absence - SHIF - NSSF - AHL (Housing Levy)
   // CRITICAL: Advance and Shopping are NOT deducted here - they are POST-TAX deductions
@@ -270,27 +458,19 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
   const paye = computePAYE(taxablePay, settings.personal_relief ?? 2400)
 
   const otherDeductions = 0
-  
-  // Net Pay Calculation
-  // Formula: NET_PAY = TAXABLE_PAY - PAYE - ADVANCE - SHOPPING - OTHER_DEDUCTIONS
-  // 
-  // CRITICAL: Advance and Shopping are POST-TAX deductions
-  // They are deducted from Net Pay (after tax), NOT from Gross Taxable Income
-  // CRITICAL: Shopping and Advance are treated EXACTLY the same - only the name differs
-  // Both are deducted from Net Pay identically, order doesn't matter
-  // 
-  // Calculation Flow:
-  // 1. Gross Earnings = Basic + Allowances + Overtime + Holiday Pay
-  // 2. Gross After Absence = Gross Earnings - Absence Deduction (PRE-TAX)
-  // 3. Statutory Deductions = SHIF + NSSF + AHL (from Gross After Absence)
-  // 4. Taxable Pay = Gross After Absence - Statutory Deductions
-  // 5. PAYE = Tax on Taxable Pay - Personal Relief
-  // 6. Net Pay = Taxable Pay - PAYE - Advance - Shopping - Other Deductions
-  //    (Shopping and Advance are interchangeable in this formula)
-  const netPay = round2(taxablePay - paye - advanceAmount - shoppingAmount - otherDeductions)
-  
-  // Total Deductions for reporting purposes (all deductions including post-tax)
-  const totalDeductions = round2(shif.shif_employee + nssf.nssf_employee + ahl.ahl_employee + paye + advanceAmount + shoppingAmount + otherDeductions)
+
+  // Net pay = gross after absence minus SHIF, NSSF, AHL, PAYE, advance, shopping, other (advance/shopping post-tax)
+  const totalDeductions = round2(
+    shif.shif_employee +
+      nssf.nssf_employee +
+      ahl.ahl_employee +
+      paye +
+      advanceAmount +
+      shoppingAmount +
+      otherDeductions
+  )
+  // Net pay: whole KES (no decimals)
+  const netPay = Math.round(round2(grossAfterAbsence - totalDeductions))
 
   // Actual vs Projected earnings (based on pay_date)
   const payDate = Math.min(31, Math.max(1, Number(settings.pay_date) || 25))
@@ -305,8 +485,8 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
   // Note: Advance and Shopping are post-tax, so they don't affect actual/projected earnings calculation
   const actual_earnings = round2(grossAfterAbsence * actualRatio)
   const projected_earnings = round2(grossAfterAbsence * projectedRatio)
-  const actual_net = round2(netPay * actualRatio)
-  const projected_net = round2(netPay * projectedRatio)
+  const actual_net = Math.round(netPay * actualRatio)
+  const projected_net = Math.round(netPay * projectedRatio)
 
   return {
     period,
@@ -329,9 +509,11 @@ export const calculatePayrollLine = ({ employee, attendanceRecords, period, sett
     overtime_pay: overtime.overtime_pay,
     holiday_pay: holidayPay,
     absence_deduction: absenceDeduction,
+    manual_absence_deduction: manualAbsenceDeduction,
+    unpaid_leave_deduction: unpaidLeaveDeduction,
+    unpaid_leave_day_equivalents: round2(unpaidEq),
 
-    // TOTAL EARN = Basic Pay + HSE ALLOW + Other Monthly Allowances + Overtime + Holiday Pay
-    // This is the gross before any deductions
+    // Total earn (reporting): gross after absence — same numeric base as gross_pay / statutory
     total_earn: round2(totalEarn),
 
     // Gross pay after absence deduction (before advance/shopping)

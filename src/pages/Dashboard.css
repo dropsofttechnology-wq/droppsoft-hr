@@ -711,7 +711,7 @@
   }
 }
 
-/* School operational expenses (local API) */
+/* School operational spend + fee ledger summaries */
 .school-expense-summary-heading {
   display: flex;
   flex-wrap: wrap;
@@ -804,6 +804,27 @@
   opacity: 0.92;
 }
 
+.school-expense-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.school-expense-quick-link {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  cursor: pointer;
+}
+
+.school-expense-quick-link:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .school-expense-queue {
   margin: 0.35rem 0 0.15rem;
 }
@@ -820,4 +841,46 @@
 .school-expense-queue-row strong {
   font-size: 1.35rem;
   font-weight: 700;
+}
+
+.school-attendance-summary-card {
+  min-height: 11rem;
+}
+
+.school-attendance-summary-card:disabled {
+  opacity: 0.85;
+  cursor: wait;
+  transform: none;
+}
+
+.school-attendance-summary-rate {
+  font-size: 2.35rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0.35rem 0 0.15rem;
+  letter-spacing: -0.02em;
+}
+
+.school-attendance-summary-counts {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  opacity: 0.92;
+}
+
+.school-attendance-summary-date-note,
+.school-attendance-summary-empty,
+.school-attendance-summary-loading {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  opacity: 0.88;
+}
+
+.school-attendance-summary-warning {
+  margin: 0.25rem 0 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(250, 204, 21, 0.22);
+  color: #fef9c3;
+  font-size: 0.85rem;
+  font-weight: 600;
 }

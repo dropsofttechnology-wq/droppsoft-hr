@@ -1,0 +1,63 @@
+.leave-types-page {
+  padding: 2rem;
+}
+
+.leave-types-table-container {
+  background: white;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.leave-types-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leave-types-table thead {
+  background: var(--color-bg-tertiary);
+}
+
+.leave-types-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  border-bottom: 2px solid var(--color-bg-tertiary);
+}
+
+.leave-types-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+.leave-types-table tbody tr:hover {
+  background: var(--color-bg-primary);
+}
+
+.description-cell {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge-statutory {
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .leave-types-table-container {
+    overflow-x: auto;
+  }
+
+  .leave-types-table {
+    min-width: 700px;
+  }
+}

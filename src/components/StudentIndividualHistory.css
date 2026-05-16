@@ -1,0 +1,179 @@
+.student-history-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.student-history-panel {
+  width: min(720px, 100%);
+  max-height: min(88vh, 900px);
+  overflow: auto;
+  border-radius: 12px;
+  background: var(--card-bg, #fff);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+  border: 1px solid var(--border-color, #e2e6ea);
+}
+
+.student-history-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color, #e8eaed);
+  position: sticky;
+  top: 0;
+  background: var(--card-bg, #fff);
+  z-index: 1;
+}
+
+.student-history-header h2 {
+  margin: 0 0 0.2rem;
+  font-size: 1.2rem;
+}
+
+.student-history-subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted, #5c6570);
+}
+
+.student-history-close {
+  border: none;
+  background: transparent;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted, #64748b);
+  padding: 0 0.25rem;
+}
+
+.student-history-close:hover {
+  color: var(--text-primary, #0f172a);
+}
+
+.student-history-hint,
+.student-history-empty {
+  padding: 1.25rem;
+  margin: 0;
+  color: var(--text-muted, #5c6570);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.student-history-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.65rem;
+  padding: 0 1.25rem 1rem;
+}
+
+.student-history-badge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e6ea);
+}
+
+.student-history-badge .label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+
+.student-history-badge strong {
+  font-size: 1.15rem;
+}
+
+.student-history-badge--present {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.student-history-badge--absent {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.student-history-badge--late {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.student-history-badge--rate {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.student-history-table-wrap {
+  margin: 0 1.25rem 1.25rem;
+  overflow-x: auto;
+  border: 1px solid var(--border-color, #e2e6ea);
+  border-radius: 10px;
+}
+
+.student-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.student-history-table th,
+.student-history-table td {
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #e8eaed);
+}
+
+.student-history-table th {
+  background: var(--table-header-bg, #f6f8fa);
+  font-weight: 600;
+}
+
+.student-history-session {
+  color: var(--text-muted, #64748b);
+  font-size: 0.82rem;
+}
+
+.student-history-remarks {
+  color: var(--text-muted, #475569);
+  max-width: 220px;
+}
+
+.student-history-status {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.student-history-status--present {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.student-history-status--absent {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.student-history-status--late {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.student-history-status--excused {
+  background: #dbeafe;
+  color: #1e40af;
+}

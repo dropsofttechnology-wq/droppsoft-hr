@@ -1,0 +1,178 @@
+.student-attendance-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.student-attendance-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color, #e2e6ea);
+}
+
+.student-attendance-tabs button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-muted, #5c6570);
+}
+
+.student-attendance-tabs button.active {
+  color: var(--primary-color, #2563eb);
+  border-bottom-color: var(--primary-color, #2563eb);
+  font-weight: 600;
+}
+
+.student-attendance-page .page-header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+}
+
+.student-attendance-page .page-description {
+  color: var(--text-muted, #5c6570);
+  margin: 0 0 1.25rem;
+  line-height: 1.45;
+}
+
+.student-attendance-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.student-attendance-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #5c6570);
+}
+
+.student-attendance-controls input[type='date'],
+.student-attendance-controls select {
+  min-width: 160px;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+}
+
+.student-attendance-primary,
+.student-attendance-secondary,
+.student-attendance-export {
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+  background: var(--card-bg, #fff);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.student-attendance-primary {
+  border-color: var(--primary-color, #2563eb);
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+  font-weight: 500;
+}
+
+.student-attendance-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.student-attendance-export {
+  border-color: var(--primary-color, #2563eb);
+  color: var(--primary-color, #2563eb);
+  font-weight: 500;
+}
+
+.student-attendance-hint {
+  color: var(--text-muted, #5c6570);
+  font-size: 0.9rem;
+}
+
+.student-attendance-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.student-attendance-unsaved {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.student-attendance-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-color, #e2e6ea);
+  border-radius: 10px;
+  background: var(--card-bg, #fff);
+}
+
+.student-attendance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.student-attendance-table th,
+.student-attendance-table td {
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #e8eaed);
+}
+
+.student-attendance-table th {
+  background: var(--table-header-bg, #f6f8fa);
+  font-weight: 600;
+}
+
+.student-attendance-check {
+  width: 4rem;
+  text-align: center;
+}
+
+.student-attendance-table select {
+  padding: 0.25rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #d0d7de);
+  font-size: 0.85rem;
+}
+
+.student-attendance-table-wrap--report {
+  margin-bottom: 1rem;
+}
+
+.student-attendance-table tbody tr.student-attendance-row--highlight {
+  background: linear-gradient(90deg, rgba(250, 204, 21, 0.35), rgba(253, 224, 71, 0.12));
+  box-shadow: inset 3px 0 0 0 #ca8a04;
+  transition: background 0.35s ease;
+}
+
+.student-attendance-empty {
+  text-align: center;
+  color: var(--text-muted, #5c6570);
+  padding: 1rem;
+}
+
+.student-attendance-link-btn {
+  padding: 0.2rem 0.5rem;
+  border: none;
+  background: none;
+  color: var(--primary-color, #2563eb);
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+
+.student-attendance-link-btn:hover {
+  text-decoration: none;
+}

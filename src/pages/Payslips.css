@@ -1,0 +1,66 @@
+.payslips-page {
+  padding: 2rem;
+}
+
+.payslips-filters {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.filter-group input[type='month'] {
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-bg-tertiary);
+  font-size: 1rem;
+}
+
+.payslips-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.payslips-help {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.payslips-help h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: var(--color-text-primary);
+}
+
+.payslips-help ul {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.payslips-help li {
+  margin: 0.5rem 0;
+  color: var(--color-text-secondary);
+}
+
+.payslips-help p {
+  margin: 0.5rem 0;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}

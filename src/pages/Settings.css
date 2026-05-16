@@ -2,6 +2,16 @@
   padding: 2rem;
 }
 
+.settings-users-shortcut {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.95rem;
+  color: #64748b;
+}
+
+.settings-users-shortcut a {
+  font-weight: 600;
+}
+
 .settings-sections {
   display: flex;
   flex-direction: column;
@@ -21,6 +31,18 @@
   font-size: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid #e5e7eb;
+}
+
+.settings-section h3 {
+  margin: 1.5rem 0 1rem 0;
+  color: #475569;
+  font-size: 1.1rem;
+}
+
+.settings-section-desc {
+  margin: -0.5rem 0 1rem 0;
+  color: #64748b;
+  font-size: 0.9rem;
 }
 
 .form-group {

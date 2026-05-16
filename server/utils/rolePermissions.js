@@ -237,6 +237,27 @@ export const PERMISSION_DEFINITIONS = [
     defaults: { ...DEF_USER_ADMIN }
   },
   {
+    key: 'fee_ledger',
+    label: 'School fee ledger',
+    description:
+      'Manage students, academic years/terms, fee charges, and fee payments (stub ledger for school fees; local API).',
+    defaults: { ...DEF_CASHIER_PLUS }
+  },
+  {
+    key: 'school_attendance',
+    label: 'Student attendance register',
+    description:
+      'Take daily class attendance for students (separate from staff clock-in; local API). Uses class labels from the fee ledger.',
+    defaults: { ...DEF_CASHIER_PLUS }
+  },
+  {
+    key: 'cbc_grading',
+    label: 'CBC grading & assessments',
+    description:
+      'Configure learning areas and strands, record Kenyan CBC performance levels (EE/ME/AE/BE), and print learner progress reports.',
+    defaults: { ...DEF_CASHIER_PLUS }
+  },
+  {
     key: 'operational_expenses',
     label: 'School operational expenses',
     description:

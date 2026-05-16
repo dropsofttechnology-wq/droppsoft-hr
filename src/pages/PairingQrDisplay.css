@@ -1,0 +1,115 @@
+.pairing-qr-page {
+  max-width: 560px;
+}
+
+.pairing-qr-lead {
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-top: var(--spacing-sm);
+}
+
+.pairing-qr-warn {
+  background: #fef3c7;
+  color: #92400e;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.pairing-qr-box {
+  display: inline-block;
+  padding: var(--spacing-md);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.pairing-qr-details {
+  font-size: 0.85rem;
+  margin-bottom: var(--spacing-lg);
+}
+
+.pairing-qr-details pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--color-bg-tertiary);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+.pairing-qr-footer {
+  margin-top: var(--spacing-xl);
+}
+
+.pairing-qr-footer a {
+  color: var(--color-accent-blue);
+}
+
+.pairing-qr-warn--strong {
+  border: 1px solid #f59e0b;
+}
+
+.pairing-qr-lan-box {
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.pairing-qr-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  font-size: 0.95rem;
+}
+
+.pairing-qr-input {
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+}
+
+.pairing-qr-hint {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: var(--spacing-sm) 0 var(--spacing-md);
+  line-height: 1.45;
+}
+
+.pairing-qr-hint code {
+  font-size: 0.88em;
+  background: var(--color-bg-tertiary);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
+.pairing-qr-save-btn {
+  padding: 0.45rem 0.85rem;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pairing-qr-save-btn:hover {
+  background: var(--color-primary-light);
+}
+
+.pairing-qr-encoded {
+  margin-top: var(--spacing-sm);
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+.pairing-qr-encoded code {
+  font-size: 0.9em;
+}

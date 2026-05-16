@@ -8,6 +8,11 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+release/
+release-*/
+.asar_check/
+.asar_tmp/
+.installed_check/
 dist
 dist-ssr
 *.local
@@ -31,3 +36,10 @@ dist-ssr
 
 # Appwrite
 .appwrite
+.vercel
+.env*.local
+
+# Android release signing (never commit)
+android/keystore.properties
+android/*.jks
+android/*.keystore

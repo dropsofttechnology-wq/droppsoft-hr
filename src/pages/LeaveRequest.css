@@ -1,0 +1,151 @@
+.leave-request-page {
+  padding: 2rem;
+}
+
+.leave-request-form-container {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  box-shadow: var(--shadow-sm);
+  max-width: 800px;
+}
+
+.leave-request-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.leave-balance-info {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+
+.leave-balance-info h3 {
+  margin: 0 0 1rem 0;
+  color: var(--color-text-primary);
+  font-size: 1.125rem;
+}
+
+.balance-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.balance-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-bg-tertiary);
+}
+
+.balance-item:last-child {
+  border-bottom: none;
+}
+
+.balance-item.total {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid var(--color-accent-blue);
+  font-weight: 600;
+}
+
+.balance-item.highlight {
+  background: rgba(37, 99, 235, 0.06);
+  margin: 0 -0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border-bottom: none;
+}
+
+.leave-balance-lead {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.leave-balance-note {
+  margin: 1rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.balance-label {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.balance-value {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.days-calculated {
+  background: var(--color-accent-blue);
+  color: white;
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-size: 1.125rem;
+}
+
+.days-calculated .days-vs-balance {
+  font-weight: 500;
+  opacity: 0.95;
+}
+
+.days-calculated--over-limit {
+  background: #b91c1c;
+}
+
+.days-limit-error {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.form-actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.balance-deduction-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+}
+
+.balance-deduction-options .radio-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.balance-deduction-options .radio-line input {
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 768px) {
+  .leave-request-form-container {
+    padding: 1.5rem;
+  }
+
+  .balance-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+}

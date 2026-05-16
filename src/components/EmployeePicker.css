@@ -1,0 +1,23 @@
+.employee-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.employee-picker-filter {
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.employee-picker-select {
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.35rem;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}

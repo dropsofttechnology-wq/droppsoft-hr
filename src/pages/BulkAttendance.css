@@ -1,0 +1,351 @@
+.bulk-attendance-page {
+  padding: 2rem;
+}
+
+.bulk-attendance-form {
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group input[type='date'] {
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-bg-tertiary);
+}
+
+.checkbox-group {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bulk-weekend-default {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.form-hint-inline {
+  margin: 0;
+  padding-left: 1.5rem;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  max-width: 36rem;
+}
+
+.btn-weekend-select {
+  border-color: #6366f1;
+  color: #4338ca;
+}
+
+.employees-selector {
+  border-top: 1px solid var(--color-bg-tertiary);
+  padding-top: 1.5rem;
+}
+
+.selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.employees-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-bg-tertiary);
+  padding: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+  background: var(--color-bg-primary);
+}
+
+.employee-item {
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.employee-item:hover {
+  border-color: var(--color-accent-blue-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.employee-item.selected {
+  border-color: var(--color-accent-blue);
+  background: #eff6ff;
+}
+
+.employee-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.employee-meta {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.25rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.date-count {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: normal;
+  margin-left: 0.25rem;
+}
+
+.date-range-info {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  margin-top: 1rem;
+}
+
+.date-range-info h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.date-group {
+  margin-bottom: 1.25rem;
+}
+
+.date-group:last-child {
+  margin-bottom: 0;
+}
+
+.date-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.date-type-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.date-type-badge.weekend {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.date-type-badge.holiday {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.date-count-badge {
+  padding: 0.25rem 0.5rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.date-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+
+.date-item {
+  padding: 0.625rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.date-item.weekend {
+  border-left: 3px solid #3b82f6;
+}
+
+.date-item.holiday {
+  border-left: 3px solid #f59e0b;
+}
+
+.date-item.holiday.also-weekend {
+  border-left: 3px solid #8b5cf6;
+  background: #faf5ff;
+}
+
+.date-day {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.date-holiday-name {
+  color: #92400e;
+  font-weight: 500;
+  font-size: 0.8125rem;
+}
+
+.date-holiday-note,
+.date-weekend-note {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+.loading-indicator {
+  padding: 0.5rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.bulk-open-days-panel {
+  border: 1px solid var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  background: var(--color-bg-primary);
+}
+
+.bulk-open-days-header h3 {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.1rem;
+}
+
+.bulk-open-days-lead {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.bulk-open-days-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.bulk-open-days-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.bulk-open-day-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  cursor: pointer;
+  padding: 0.35rem 0.25rem;
+  border-radius: var(--radius-sm);
+}
+
+.bulk-open-day-row:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.bulk-open-day-row input {
+  margin-top: 0.2rem;
+}
+
+.bulk-open-day-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+.bulk-open-day-dow {
+  font-weight: 600;
+  min-width: 2.5rem;
+}
+
+.bulk-open-day-date {
+  color: var(--color-text-primary);
+}
+
+.bulk-open-day-tag {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.bulk-open-day-tag.weekend {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.bulk-open-day-tag.holiday {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.bulk-emp-filter-input {
+  width: 100%;
+  max-width: 24rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-bg-tertiary);
+}
+
+@media (max-width: 768px) {
+  .bulk-attendance-form {
+    padding: 1rem;
+  }
+
+  .date-list {
+    grid-template-columns: 1fr;
+  }
+}
+

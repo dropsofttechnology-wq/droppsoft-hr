@@ -1,0 +1,127 @@
+.manual-attendance-page {
+  padding: 2rem;
+}
+
+.manual-attendance-toolbar {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+  flex-wrap: wrap;
+  margin: 1.25rem 0;
+}
+
+.manual-attendance-toolbar .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 180px;
+}
+
+.manual-attendance-toolbar .filter-group.grow {
+  flex: 1;
+  min-width: 260px;
+}
+
+.manual-attendance-toolbar input[type='month'],
+.manual-attendance-toolbar input[type='text'] {
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-bg-tertiary);
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.manual-attendance-table-container {
+  background: white;
+  border-radius: var(--radius-md);
+  overflow: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+.manual-attendance-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px;
+}
+
+.manual-attendance-table thead {
+  background: #f8fafc;
+}
+
+.manual-attendance-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #334155;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.manual-attendance-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.manual-attendance-table tbody tr:hover {
+  background: #fafafa;
+}
+
+.emp-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.emp-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.emp-sub {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.num-input,
+.money-input,
+.notes-input {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-bg-tertiary);
+  background: white;
+}
+
+.num-input {
+  max-width: 120px;
+}
+
+.money-input {
+  max-width: 160px;
+}
+
+.notes-input {
+  min-width: 240px;
+}
+
+.empty-cell {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .manual-attendance-page {
+    padding: 1rem;
+  }
+
+  .manual-attendance-table {
+    min-width: 900px;
+  }
+}
+

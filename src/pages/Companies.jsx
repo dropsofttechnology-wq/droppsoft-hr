@@ -1,7 +1,24 @@
 import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 import { useCompany } from '../contexts/CompanyContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { getCompanies, createCompany, updateCompany, deleteCompany } from '../services/companyService'
+import { uploadCompanyLogo, getFileIdFromUrl, deleteCompanyLogo } from '../services/storageService'
+import { getCompanySettings, saveCompanySettingsBulk } from '../utils/settingsHelper'
+import { dispatchCompanySettingsUpdated } from '../utils/companySettingsEvents'
 import './Companies.css'
+
+const PDF_SETTING_KEYS = [
+  'pdf_letterhead_logo_enabled',
+  'pdf_watermark_opacity',
+  'pdf_payslip_watermark_opacity'
+]
+
+const defaultPdfAppearance = () => ({
+  pdf_letterhead_logo_enabled: true,
+  pdf_watermark_opacity: '0.52',
+  pdf_payslip_watermark_opacity: ''
+})
 
 const Companies = () => {
   const { companies, currentCompany, selectCompany, loadCompanies } = useCompany()
@@ -15,10 +32,17 @@ const Companies = () => {
     address: '',
     phone: '',
     email: '',
-    status: 'active'
+    status: 'active',
+    logo_url: ''
   })
+  const [logoFile, setLogoFile] = useState(null)
+  const [logoPreview, setLogoPreview] = useState(null)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const [pdfAppearance, setPdfAppearance] = useState(defaultPdfAppearance)
 
   useEffect(() => {
     loadCompaniesData()
@@ -42,18 +66,105 @@ const Companies = () => {
     }))
   }
 
+  const handlePdfAppearanceChange = (e) => {
+    const { name, value, type, checked } = e.target
+    setPdfAppearance((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
+  }
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file')
+        return
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Logo file size must be less than 5MB')
+        return
+      }
+      setLogoFile(file)
+      // Create preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setLogoPreview(reader.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setSuccess('')
 
     try {
+      let companyData = { ...formData }
+      
+      // Upload logo if a new file was selected
+      if (logoFile) {
+        setUploadingLogo(true)
+        try {
+          // If editing and has existing logo, delete old one
+          if (editingCompany?.logo_url) {
+            const oldFileId = getFileIdFromUrl(editingCompany.logo_url)
+            if (oldFileId) {
+              await deleteCompanyLogo(oldFileId)
+            }
+          }
+          
+          // Upload new logo (optional - will be null if bucket doesn't exist)
+          const companyId = editingCompany?.$id || 'temp'
+          const logoUrl = await uploadCompanyLogo(logoFile, companyId)
+          if (logoUrl) {
+            companyData.logo_url = logoUrl
+          } else {
+            // Logo upload failed (bucket not found) - continue without logo
+            // Show user-friendly message
+            setSuccess('Company saved successfully. Note: Logo upload skipped - storage bucket not configured. See CREATE_STORAGE_BUCKET_STEP_BY_STEP.md for setup instructions.')
+            // Don't set logo_url, keep existing or empty
+            if (!editingCompany?.logo_url) {
+              companyData.logo_url = ''
+            }
+          }
+        } catch (logoError) {
+          // Logo upload is optional - continue without logo
+          console.warn('Logo upload failed:', logoError.message)
+          if (!editingCompany?.logo_url) {
+            companyData.logo_url = ''
+          }
+        } finally {
+          setUploadingLogo(false)
+        }
+      }
+      
       if (editingCompany) {
-        await updateCompany(editingCompany.$id, formData)
+        await updateCompany(editingCompany.$id, companyData)
+        await saveCompanySettingsBulk(editingCompany.$id, {
+          pdf_letterhead_logo_enabled: pdfAppearance.pdf_letterhead_logo_enabled,
+          pdf_watermark_opacity: pdfAppearance.pdf_watermark_opacity,
+          pdf_payslip_watermark_opacity: String(pdfAppearance.pdf_payslip_watermark_opacity || '').trim()
+        })
+        dispatchCompanySettingsUpdated(editingCompany.$id)
         setSuccess('Company updated successfully')
       } else {
-        await createCompany(formData)
-        setSuccess('Company created successfully')
+        const newCompany = await createCompany(companyData)
+        // If logo was uploaded with temp ID, re-upload with actual company ID
+        if (logoFile && companyData.logo_url) {
+          try {
+            const actualLogoUrl = await uploadCompanyLogo(logoFile, newCompany.$id)
+            if (actualLogoUrl) {
+              await updateCompany(newCompany.$id, { logo_url: actualLogoUrl })
+            }
+          } catch (err) {
+            console.warn('Failed to update logo with company ID:', err)
+          }
+        }
+        setSuccess('Company created successfully' + (logoFile && !companyData.logo_url ? ' (Logo upload skipped - storage bucket not configured)' : ''))
       }
       
       await loadCompanies()
@@ -72,28 +183,55 @@ const Companies = () => {
       address: company.address || '',
       phone: company.phone || '',
       email: company.email || '',
-      status: company.status || 'active'
+      status: company.status || 'active',
+      logo_url: company.logo_url || ''
     })
+    setLogoFile(null)
+    setLogoPreview(company.logo_url || null)
+    setPdfAppearance(defaultPdfAppearance())
     setShowModal(true)
+    getCompanySettings(company.$id, PDF_SETTING_KEYS)
+      .then((loaded) => {
+        const lh =
+          loaded.pdf_letterhead_logo_enabled === false || loaded.pdf_letterhead_logo_enabled === 'false'
+            ? false
+            : true
+        setPdfAppearance({
+          pdf_letterhead_logo_enabled: lh,
+          pdf_watermark_opacity:
+            loaded.pdf_watermark_opacity != null && String(loaded.pdf_watermark_opacity).trim() !== ''
+              ? String(loaded.pdf_watermark_opacity)
+              : '0.52',
+          pdf_payslip_watermark_opacity:
+            loaded.pdf_payslip_watermark_opacity != null &&
+            String(loaded.pdf_payslip_watermark_opacity).trim() !== ''
+              ? String(loaded.pdf_payslip_watermark_opacity)
+              : ''
+        })
+      })
+      .catch(() => {
+        /* keep defaults */
+      })
   }
 
-  const handleDelete = async (companyId) => {
-    if (!window.confirm('Are you sure you want to delete this company? This action cannot be undone.')) {
-      return
-    }
+  const handleDelete = (companyId) => setConfirmDelete(companyId)
 
+  const handleDeleteConfirm = async () => {
+    if (!confirmDelete) return
     try {
-      await deleteCompany(companyId)
-      setSuccess('Company deleted successfully')
-      await loadCompanies()
-      
-      // If deleted company was current, clear selection
-      if (currentCompany?.$id === companyId) {
+      setDeleting(true)
+      await deleteCompany(confirmDelete)
+      if (currentCompany?.$id === confirmDelete) {
         selectCompany(null)
         localStorage.removeItem('currentCompanyId')
       }
+      setConfirmDelete(null)
+      toast.success('Company deleted successfully')
+      await loadCompanies()
     } catch (error) {
-      setError(error.message || 'Failed to delete company')
+      toast.error(error.message || 'Failed to delete company')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -107,8 +245,12 @@ const Companies = () => {
       address: '',
       phone: '',
       email: '',
-      status: 'active'
+      status: 'active',
+      logo_url: ''
     })
+    setLogoFile(null)
+    setLogoPreview(null)
+    setPdfAppearance(defaultPdfAppearance())
     setError('')
     setSuccess('')
   }
@@ -127,9 +269,25 @@ const Companies = () => {
     <div className="companies-page">
       <div className="page-header">
         <h1>Companies</h1>
-        <button 
+        <button
           className="btn-primary"
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setEditingCompany(null)
+            setFormData({
+              name: '',
+              registration_number: '',
+              tax_pin: '',
+              address: '',
+              phone: '',
+              email: '',
+              status: 'active',
+              logo_url: ''
+            })
+            setLogoFile(null)
+            setLogoPreview(null)
+            setPdfAppearance(defaultPdfAppearance())
+            setShowModal(true)
+          }}
         >
           + Create Company
         </button>
@@ -304,6 +462,80 @@ const Companies = () => {
               </div>
 
               <div className="form-group">
+                <label>Company Logo</label>
+                <div className="logo-upload-section">
+                  {logoPreview && (
+                    <div className="logo-preview">
+                      <img src={logoPreview} alt="Logo preview" />
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoChange}
+                    disabled={uploadingLogo}
+                    className="logo-input"
+                  />
+                  <small>Recommended: PNG or JPG, max 5MB, square format works best</small>
+                </div>
+              </div>
+
+              <div className={`companies-pdf-section ${!editingCompany ? 'companies-pdf-section-disabled' : ''}`}>
+                <h3 className="companies-pdf-title">PDF watermark &amp; letterhead</h3>
+                <p className="companies-pdf-hint">
+                  A diagonal watermark is shown on every PDF export for this company. Adjust strength below; use higher
+                  values on payslips so the stamp stays readable on small grids.
+                  {!editingCompany && (
+                    <strong> Save the company first, then edit it to configure these options.</strong>
+                  )}
+                </p>
+                <fieldset className="companies-pdf-fieldset" disabled={!editingCompany}>
+                  <div className="form-group">
+                    <label>
+                      <input
+                        type="checkbox"
+                        name="pdf_letterhead_logo_enabled"
+                        checked={pdfAppearance.pdf_letterhead_logo_enabled}
+                        onChange={handlePdfAppearanceChange}
+                      />
+                      Show company logo in PDF letterhead
+                    </label>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Watermark strength — reports &amp; payroll list (0.15–1.25)</label>
+                      <input
+                        type="number"
+                        name="pdf_watermark_opacity"
+                        value={pdfAppearance.pdf_watermark_opacity}
+                        onChange={handlePdfAppearanceChange}
+                        min="0.15"
+                        max="1.25"
+                        step="0.01"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Payslip watermark strength (0.15–1.25)</label>
+                      <input
+                        type="number"
+                        name="pdf_payslip_watermark_opacity"
+                        value={pdfAppearance.pdf_payslip_watermark_opacity}
+                        onChange={handlePdfAppearanceChange}
+                        min="0.15"
+                        max="1.25"
+                        step="0.01"
+                        placeholder="Auto"
+                      />
+                    </div>
+                  </div>
+                  <small className="companies-pdf-footnote">
+                    Leave payslip strength empty for automatic visibility based on the general strength (recommended).
+                    Try <strong>0.85–1.05</strong> if individual payslips still look faint.
+                  </small>
+                </fieldset>
+              </div>
+
+              <div className="form-group">
                 <label>Status</label>
                 <select
                   name="status"
@@ -319,14 +551,26 @@ const Companies = () => {
                 <button type="button" className="btn-secondary" onClick={handleCloseModal}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
-                  {editingCompany ? 'Update' : 'Create'} Company
+                <button type="submit" className="btn-primary" disabled={uploadingLogo}>
+                  {uploadingLogo ? 'Uploading...' : (editingCompany ? 'Update' : 'Create')} Company
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Delete company"
+        message="Are you sure you want to delete this company? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        danger
+        loading={deleting}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   )
 }

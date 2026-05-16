@@ -1,0 +1,58 @@
+.banks-page {
+  padding: 2rem;
+}
+
+.banks-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+  gap: 1.5rem;
+}
+
+.banks-form-card,
+.banks-list-card {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.banks-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.banks-form .form-group input,
+.banks-form .form-group select {
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-bg-tertiary);
+}
+
+.banks-table-container {
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.banks-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.banks-table th,
+.banks-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-bg-tertiary);
+  text-align: left;
+}
+
+.banks-table thead {
+  background: var(--color-bg-tertiary);
+}
+
+@media (max-width: 900px) {
+  .banks-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+

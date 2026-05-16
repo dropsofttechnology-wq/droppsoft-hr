@@ -1,0 +1,229 @@
+.server-connection-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+}
+
+.server-connection-card {
+  width: 100%;
+  max-width: 520px;
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  padding: var(--spacing-2xl);
+  line-height: 1.5;
+}
+
+.server-connection-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.server-connection-logo img {
+  height: 48px;
+}
+
+.server-connection-card h1 {
+  font-size: 1.35rem;
+  margin: 0 0 var(--spacing-sm);
+  color: var(--color-text-primary);
+  text-align: center;
+}
+
+.server-connection-lead {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+  margin: 0 0 var(--spacing-lg);
+}
+
+.server-connection-h2 {
+  font-size: 1rem;
+  margin: 0 0 var(--spacing-sm);
+  color: var(--color-text-primary);
+}
+
+.server-connection-qr-block {
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.server-connection-qr-view {
+  min-height: 200px;
+  margin: var(--spacing-md) 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.server-connection-lead code {
+  font-size: 0.85em;
+  background: var(--color-bg-tertiary);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+.server-connection-banner {
+  background: #fef3c7;
+  color: #92400e;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  font-size: 0.9rem;
+}
+
+.server-connection-note {
+  font-size: 0.9rem;
+  color: var(--color-accent-red-dark);
+  margin: 0 0 var(--spacing-md);
+}
+
+.server-connection-label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: var(--spacing-xs);
+  color: var(--color-text-primary);
+}
+
+.server-connection-input {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.server-connection-input:focus {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 1px;
+}
+
+.server-connection-meta {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin: var(--spacing-sm) 0 0;
+}
+
+.server-connection-meta code {
+  font-size: 0.85em;
+  word-break: break-all;
+}
+
+.server-connection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+}
+
+.server-connection-btn {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border: none;
+}
+
+.server-connection-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.server-connection-btn.primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.server-connection-btn.primary:hover:not(:disabled) {
+  background: var(--color-primary-light);
+}
+
+.server-connection-btn.secondary {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.server-connection-btn.secondary:hover:not(:disabled) {
+  background: var(--color-border-light);
+}
+
+.server-connection-linkish {
+  display: block;
+  width: 100%;
+  margin-top: var(--spacing-md);
+  background: none;
+  border: none;
+  color: var(--color-accent-blue);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+  text-align: left;
+}
+
+.server-connection-success {
+  margin: var(--spacing-md) 0 0;
+  color: var(--color-success-dark);
+  font-size: 0.9rem;
+}
+
+.server-connection-error {
+  margin: var(--spacing-md) 0 0;
+  color: var(--color-accent-red-dark);
+  font-size: 0.9rem;
+}
+
+.server-connection-links {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.server-connection-links a {
+  color: var(--color-accent-blue);
+  text-decoration: none;
+}
+
+.server-connection-links a:hover {
+  text-decoration: underline;
+}
+
+.installation-info-card .installation-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.installation-info-card .installation-section h2 {
+  font-size: 1.05rem;
+  margin: 0 0 var(--spacing-sm);
+  color: var(--color-text-primary);
+}
+
+.installation-info-card .installation-section ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.installation-info-card .installation-section p {
+  margin: 0 0 var(--spacing-sm);
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+.installation-info-card .installation-section code {
+  font-size: 0.88em;
+  background: var(--color-bg-tertiary);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}

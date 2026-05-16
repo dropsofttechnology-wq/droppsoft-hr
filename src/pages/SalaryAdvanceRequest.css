@@ -1,0 +1,26 @@
+.salary-advance-request-page {
+  max-width: 560px;
+}
+
+.sar-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.sar-form input,
+.sar-form select,
+.sar-form textarea {
+  width: 100%;
+  max-width: 400px;
+}
+
+.sar-form .form-hint {
+  margin: 0.35rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #64748b);
+  line-height: 1.45;
+}
+
+.sar-form .optional {
+  font-weight: 400;
+  color: var(--color-text-secondary, #64748b);
+}

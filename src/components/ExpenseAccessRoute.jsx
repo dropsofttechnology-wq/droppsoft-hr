@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { hasPermission } from '../utils/permissions'
 
-/** Users with operational expense capture or approval permission (local API). */
+/** Users with operational expense capture or approval (local API or Appwrite collections). */
 const ExpenseAccessRoute = ({ children }) => {
   const { user, loading } = useAuth()
 

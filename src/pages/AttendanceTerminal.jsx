@@ -1,16 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { useCompany } from '../contexts/CompanyContext'
 import { useFaceRecognition } from '../hooks/useFaceRecognition'
+import { useFaceSettings } from '../hooks/useFaceSettings'
 import { getAllFaceDescriptors } from '../services/faceService'
 import { logAttendance, findEmployeeByQR, getAttendanceStatus } from '../services/attendanceService'
 import { getEmployees } from '../services/employeeService'
+import { getCompanySettings } from '../utils/settingsHelper'
+import { isClockInOnTime } from '../utils/attendanceHelper'
+import { format } from 'date-fns'
 import { createFaceMatcher, matchFace } from '../utils/faceMatcher'
 import { Html5Qrcode } from 'html5-qrcode'
 import './AttendanceTerminal.css'
 
 const AttendanceTerminal = () => {
   const { currentCompany } = useCompany()
-  const { modelsLoaded, detectFace } = useFaceRecognition()
+  const { settings: faceSettings } = useFaceSettings()
+  const { modelsLoaded, detectFace } = useFaceRecognition(faceSettings)
   
   const [mode, setMode] = useState('face') // 'face', 'qr', 'manual'
   const [status, setStatus] = useState('ready')
@@ -33,10 +38,15 @@ const AttendanceTerminal = () => {
   // QR code
   const qrScannerRef = useRef(null)
   const [qrScanner, setQrScanner] = useState(null)
+  const [qrError, setQrError] = useState('')
+  const qrStartingRef = useRef(false)
   
   // Manual entry
   const [manualInput, setManualInput] = useState('')
   const [showKeypad, setShowKeypad] = useState(false)
+
+  // Reporting grace period (for on-time / late message)
+  const [reportingSettings, setReportingSettings] = useState({})
 
   useEffect(() => {
     updateClock()
@@ -48,6 +58,9 @@ const AttendanceTerminal = () => {
     if (currentCompany) {
       loadEmployees()
       loadFaceDescriptors()
+      getCompanySettings(currentCompany.$id, ['official_reporting_time', 'reporting_grace_minutes'])
+        .then(s => setReportingSettings(s || {}))
+        .catch(() => setReportingSettings({}))
     }
   }, [currentCompany])
 
@@ -63,7 +76,7 @@ const AttendanceTerminal = () => {
       stopFaceDetection()
       stopQRScanner()
     }
-  }, [mode, modelsLoaded, faceDescriptors])
+  }, [mode, modelsLoaded, faceDescriptors, faceSettings])
 
   const updateClock = () => {
     setCurrentTime(new Date())
@@ -89,7 +102,8 @@ const AttendanceTerminal = () => {
 
   const initializeFaceMatcher = () => {
     try {
-      const matcher = createFaceMatcher(faceDescriptors)
+      const threshold = faceSettings?.face_matching_threshold ?? 0.35
+      const matcher = createFaceMatcher(faceDescriptors, threshold)
       setFaceMatcher(matcher)
     } catch (error) {
       console.error('Error creating face matcher:', error)
@@ -100,8 +114,14 @@ const AttendanceTerminal = () => {
     if (!videoRef.current || !modelsLoaded) return
 
     try {
+      // Optimized camera settings for faster face detection
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 640, height: 480 }
+        video: { 
+          facingMode: 'user', 
+          width: { ideal: 640, max: 1280 }, 
+          height: { ideal: 480, max: 720 },
+          frameRate: { ideal: 30, max: 60 } // Optimize frame rate for detection
+        }
       })
       
       videoRef.current.srcObject = stream
@@ -125,20 +145,30 @@ const AttendanceTerminal = () => {
     }
 
     try {
+      // Optimized: Check video is ready before detection
+      if (videoRef.current.readyState < 2) {
+        requestAnimationFrame(detectLoop)
+        return
+      }
+
       const detection = await detectFace(videoRef.current)
       
-      if (detection) {
-        const match = matchFace(faceMatcher, detection.descriptor)
+      if (detection && detection.detection && detection.descriptor) {
+        const minConf = faceSettings?.face_matching_min_confidence ?? 65
+        const match = matchFace(faceMatcher, detection.descriptor, minConf)
         
-        if (match && match.confidence >= 90) {
+        if (match && match.confidence >= minConf) {
           await handleClockInOut(match.userId, 'face')
+          return // Stop detection after successful match
         }
       }
     } catch (error) {
       console.error('Detection error:', error)
     }
 
+    // Continue detection loop with optimized frame rate
     if (mode === 'face' && !processing) {
+      // Use requestAnimationFrame for smooth 60fps, but detection is throttled to 30fps internally
       requestAnimationFrame(detectLoop)
     }
   }
@@ -151,39 +181,74 @@ const AttendanceTerminal = () => {
   }
 
   const startQRScanner = async () => {
-    if (qrScanner) return
+    if (qrScanner || qrScannerRef.current || qrStartingRef.current) return
+    qrStartingRef.current = true
+    setQrError('')
+
+    const onDecoded = (decodedText) => {
+      handleQRCode(decodedText)
+    }
+    const onScanError = () => {
+      // Ignore scan frame-level errors.
+    }
 
     try {
       const scanner = new Html5Qrcode('qr-reader')
+      qrScannerRef.current = scanner
       
       await scanner.start(
         { facingMode: 'environment' },
         {
-          fps: 30,
+          fps: 15,
           qrbox: { width: 250, height: 250 }
         },
-        (decodedText) => {
-          handleQRCode(decodedText)
-        },
-        (errorMessage) => {
-          // Ignore scanning errors
-        }
+        onDecoded,
+        onScanError
       )
       
       setQrScanner(scanner)
-    } catch (error) {
-      console.error('QR Scanner error:', error)
+    } catch (facingModeError) {
+      // Some Android WebViews fail on facingMode in release; retry with explicit camera id.
+      try {
+        const scanner = new Html5Qrcode('qr-reader')
+        qrScannerRef.current = scanner
+        const cameras = await Html5Qrcode.getCameras()
+        if (!cameras?.length) {
+          throw new Error('No camera found on this device.')
+        }
+        await scanner.start(
+          cameras.find((c) => /back|rear|environment/i.test(c.label || ''))?.id || cameras[0].id,
+          {
+            fps: 15,
+            qrbox: { width: 250, height: 250 }
+          },
+          onDecoded,
+          onScanError
+        )
+        setQrScanner(scanner)
+      } catch (fallbackError) {
+        console.error('QR Scanner error:', facingModeError)
+        console.error('QR Scanner fallback error:', fallbackError)
+        setQrError(
+          fallbackError?.message || 'Could not start the QR camera. Check camera permission and try again.'
+        )
+        qrScannerRef.current = null
+      }
+    } finally {
+      qrStartingRef.current = false
     }
   }
 
   const stopQRScanner = async () => {
-    if (qrScanner) {
+    const scanner = qrScannerRef.current || qrScanner
+    if (scanner) {
       try {
-        await qrScanner.stop()
-        await qrScanner.clear()
+        await scanner.stop()
+        await scanner.clear()
       } catch (error) {
         console.error('Error stopping QR scanner:', error)
       }
+      qrScannerRef.current = null
       setQrScanner(null)
     }
   }
@@ -280,7 +345,7 @@ const AttendanceTerminal = () => {
       }
       
       // Log attendance
-      await logAttendance({
+      const record = await logAttendance({
         user_id: userId,
         company_id: currentCompany.$id,
         auth_method: authMethod,
@@ -289,12 +354,17 @@ const AttendanceTerminal = () => {
       })
       
       // Determine action
-      const action = currentStatus.status === 'not_clocked_in' || currentStatus.status === 'clocked_out' 
-        ? 'Clocked In' 
-        : 'Clocked Out'
+      const isClockIn = currentStatus.status === 'not_clocked_in' || currentStatus.status === 'clocked_out'
+      const action = isClockIn ? 'Clocked In' : 'Clocked Out'
       
       const time = new Date().toLocaleTimeString()
-      setSuccessMessage(`Hello ${employee.name}! ${action} at ${time}`)
+      let message = `Hello ${employee.name}! ${action} at ${time}`
+      if (isClockIn && record?.clock_in_time) {
+        const today = format(new Date(), 'yyyy-MM-dd')
+        const onTime = isClockInOnTime(record.clock_in_time, today, reportingSettings)
+        message += onTime ? ' (On time)' : ' (Late)'
+      }
+      setSuccessMessage(message)
       showSuccessFeedback()
       
       // Play success sound
@@ -461,6 +531,11 @@ const AttendanceTerminal = () => {
       {/* QR Code Mode */}
       {mode === 'qr' && (
         <div className="terminal-view qr-view">
+          {qrError && (
+            <div className="alert alert-warning" role="alert" style={{ marginBottom: 12 }}>
+              {qrError}
+            </div>
+          )}
           <div id="qr-reader" className="qr-scanner"></div>
           <div className="qr-instructions">
             <p>Scan your QR code</p>

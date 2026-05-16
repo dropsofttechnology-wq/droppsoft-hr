@@ -19,6 +19,16 @@
   margin-top: 1.5rem;
 }
 
+.face-enroll-emp-search {
+  width: 100%;
+  max-width: 24rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+}
+
 .employee-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -236,6 +246,12 @@
 
 .completion-message strong {
   color: #1e293b;
+}
+
+.face-enroll-self-hint {
+  line-height: 1.55;
+  color: #475569;
+  margin: 0 0 1rem;
 }
 
 @media (max-width: 768px) {

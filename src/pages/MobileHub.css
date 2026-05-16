@@ -1,0 +1,206 @@
+.mobile-hub {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-2xl);
+}
+
+.mobile-hub__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.mobile-hub__logo {
+  width: 88px;
+  height: 88px;
+  max-width: min(88px, 28vw);
+  max-height: min(88px, 28vw);
+  object-fit: contain;
+  object-position: center;
+  flex-shrink: 0;
+}
+
+.mobile-hub__header-text {
+  width: 100%;
+}
+
+.mobile-hub__header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  color: var(--color-text-primary);
+}
+
+.mobile-hub__sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.mobile-hub__company {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin: 0 0 var(--spacing-lg);
+}
+
+.mobile-hub__card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.mobile-hub__card h2 {
+  margin: 0 0 var(--spacing-sm);
+  font-size: 1rem;
+  color: var(--color-text-primary);
+}
+
+.mobile-hub__api-line {
+  margin: 0 0 var(--spacing-sm);
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mobile-hub__label {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mobile-hub__code {
+  word-break: break-all;
+  font-size: 0.8rem;
+  background: var(--color-bg-tertiary);
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.mobile-hub__health {
+  margin: 0 0 var(--spacing-md);
+  font-size: 0.9rem;
+}
+
+.mobile-hub__ok {
+  color: var(--color-success-dark);
+  font-weight: 600;
+}
+
+.mobile-hub__bad {
+  color: var(--color-accent-red-dark);
+  font-weight: 600;
+}
+
+.mobile-hub__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.mobile-hub__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.mobile-hub__btn--secondary {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  color: var(--color-primary);
+}
+
+.mobile-hub__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+}
+
+@media (max-width: 380px) {
+  .mobile-hub__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mobile-hub__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--spacing-md);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: inherit;
+  min-height: 5.5rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.mobile-hub__tile:hover {
+  border-color: var(--color-primary-light);
+  box-shadow: var(--shadow-md);
+}
+
+.mobile-hub__tile--admin {
+  grid-column: 1 / -1;
+  background: var(--color-bg-tertiary);
+}
+
+.mobile-hub__tile-icon {
+  font-size: 1.25rem;
+  margin-bottom: 0.25rem;
+  color: var(--color-primary);
+}
+
+.mobile-hub__tile-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+
+.mobile-hub__tile-desc {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.15rem;
+}
+
+.mobile-hub__footer {
+  margin-top: var(--spacing-2xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.mobile-hub__user {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.mobile-hub__logout {
+  background: none;
+  border: none;
+  color: var(--color-accent-red);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+}
+
+.mobile-hub__logout:hover {
+  text-decoration: underline;
+}

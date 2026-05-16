@@ -1,0 +1,173 @@
+.activity-log-page {
+  padding-bottom: 2rem;
+}
+
+.activity-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.activity-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+}
+
+.activity-filters select,
+.activity-filters input {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  min-height: 38px;
+  padding: 0.45rem 0.6rem;
+  font-family: inherit;
+  background: var(--color-bg-primary, #fff);
+}
+
+.activity-search {
+  grid-column: span 1;
+}
+
+.activity-filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.activity-action-btn {
+  border: none;
+  border-radius: 8px;
+  background: #0ea5e9;
+  color: #fff;
+  padding: 0.45rem 0.75rem;
+  min-height: 38px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.activity-action-btn.secondary {
+  background: #475569;
+}
+
+.activity-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.activity-table-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+}
+
+.activity-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 820px;
+}
+
+.activity-table th,
+.activity-table td {
+  border-bottom: 1px solid var(--color-border-light, #e5e7eb);
+  padding: 0.7rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.activity-table th {
+  background: var(--color-bg-tertiary, #f8fafc);
+  font-weight: 700;
+}
+
+.activity-badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  text-transform: capitalize;
+  font-weight: 700;
+}
+
+.activity-approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.activity-rejected,
+.activity-deactivated {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.activity-created,
+.activity-updated,
+.activity-paid {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.activity-deleted {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.mono-cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.activity-id-chip {
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: #f8fafc;
+  color: var(--color-text-primary, #0f172a);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: copy;
+}
+
+.activity-id-chip:hover {
+  background: #e2e8f0;
+}
+
+.activity-id-chip.copied {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.activity-open-btn {
+  border: none;
+  border-radius: 8px;
+  background: #0ea5e9;
+  color: #fff;
+  padding: 0.38rem 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .activity-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-filters select,
+  .activity-filters input {
+    min-height: 42px;
+  }
+
+  .activity-filter-actions {
+    width: 100%;
+  }
+
+  .activity-action-btn {
+    flex: 1;
+    min-height: 42px;
+  }
+}
+

@@ -255,6 +255,141 @@ export function mapExpenseSupplierRow(row) {
   }
 }
 
+export function mapAcademicYearRow(row) {
+  if (!row) return null
+  return {
+    id: row.id,
+    $id: row.id,
+    company_id: row.company_id,
+    label: row.label,
+    start_date: row.start_date,
+    end_date: row.end_date,
+    is_active: row.is_active != null ? !!row.is_active : true,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  }
+}
+
+export function mapAcademicTermRow(row) {
+  if (!row) return null
+  return {
+    id: row.id,
+    $id: row.id,
+    company_id: row.company_id,
+    academic_year_id: row.academic_year_id,
+    name: row.name,
+    start_date: row.start_date,
+    end_date: row.end_date,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  }
+}
+
+export function mapStudentRow(row) {
+  if (!row) return null
+  return {
+    id: row.id,
+    $id: row.id,
+    company_id: row.company_id,
+    student_number: row.student_number,
+    legal_name: row.legal_name,
+    dob: row.dob || '',
+    gender: row.gender || '',
+    class_label: row.class_label || '',
+    status: row.status || 'active',
+    guardian_summary: row.guardian_summary || '',
+    guardian_email: row.guardian_email || '',
+    notes: row.notes || '',
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  }
+}
+
+export function mapFeeChargeRow(row) {
+  if (!row) return null
+  return {
+    id: row.id,
+    $id: row.id,
+    company_id: row.company_id,
+    student_id: row.student_id,
+    academic_year_id: row.academic_year_id || '',
+    term_id: row.term_id || '',
+    description: row.description,
+    amount: row.amount != null ? Number(row.amount) : 0,
+    currency: row.currency || '',
+    due_date: row.due_date || '',
+    status: row.status || 'open',
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  }
+}
+
+export function mapFeePaymentRow(row) {
+  if (!row) return null
+  return {
+    id: row.id,
+    $id: row.id,
+    company_id: row.company_id,
+    student_id: row.student_id,
+    amount: row.amount != null ? Number(row.amount) : 0,
+    currency: row.currency || '',
+    paid_on: row.paid_on,
+    payment_method: row.payment_method || '',
+    reference: row.reference || '',
+    receipt_number: row.receipt_number || '',
+    notes: row.notes || '',
+    recorded_by: row.recorded_by || '',
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  }
+}
+
+export function mapStudentDailyAttendanceRow(row) {
+  if (!row) return null
+  return {
+    id: row.id,
+    $id: row.id,
+    company_id: row.company_id,
+    attendance_date: row.attendance_date,
+    student_id: row.student_id,
+    class_id: row.class_id,
+    status: row.status || 'absent',
+    session_type: row.session_type || 'daily',
+    marked_by: row.marked_by || '',
+    remarks: row.remarks || '',
+    created_at: row.created_at
+  }
+}
+
+export function mapSchoolSubjectRow(row) {
+  if (!row) return null
+  return {
+    id: row.id,
+    $id: row.id,
+    company_id: row.company_id,
+    subject_name: row.subject_name,
+    subject_code: row.subject_code || '',
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  }
+}
+
+export function mapSchoolSubjectStrandRow(row) {
+  if (!row) return null
+  return {
+    id: row.id,
+    $id: row.id,
+    company_id: row.company_id,
+    subject_id: row.subject_id,
+    grade_level: row.grade_level,
+    strand_name: row.strand_name,
+    subject_name: row.subject_name || '',
+    subject_code: row.subject_code || '',
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  }
+}
+
 export function mapOperationalExpenseRow(row) {
   if (!row) return null
   let attachment_ids = []

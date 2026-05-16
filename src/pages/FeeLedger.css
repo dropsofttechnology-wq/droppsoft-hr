@@ -1,0 +1,312 @@
+.fee-ledger-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.fee-ledger-page .page-header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+}
+
+.fee-ledger-page .page-description {
+  color: var(--text-muted, #5c6570);
+  margin: 0 0 1.25rem;
+  line-height: 1.45;
+}
+
+.fee-ledger-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.fee-ledger-summary-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e2e6ea);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+}
+
+.fee-ledger-summary-card .label {
+  font-size: 0.8rem;
+  color: var(--text-muted, #5c6570);
+  margin: 0 0 0.25rem;
+}
+
+.fee-ledger-summary-card .value {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.fee-ledger-summary-card--link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fee-ledger-summary-card--link:hover {
+  border-color: var(--primary-color, #2563eb);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+}
+
+.fee-ledger-summary-card--link:focus-visible {
+  outline: 2px solid var(--primary-color, #2563eb);
+  outline-offset: 2px;
+}
+
+.fee-ledger-month {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fee-ledger-month label {
+  font-size: 0.9rem;
+  color: var(--text-muted, #5c6570);
+}
+
+.fee-ledger-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.fee-ledger-tabs button {
+  border: 1px solid var(--border-color, #e2e6ea);
+  background: var(--card-bg, #fff);
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.fee-ledger-tabs button.active {
+  border-color: var(--primary-color, #2563eb);
+  background: rgba(37, 99, 235, 0.08);
+  font-weight: 600;
+}
+
+.fee-ledger-page [role='tabpanel'][hidden] {
+  display: none;
+}
+
+.fee-ledger-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-color, #e2e6ea);
+  border-radius: 10px;
+  background: var(--card-bg, #fff);
+}
+
+.fee-ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.fee-ledger-table th,
+.fee-ledger-table td {
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #e8eaed);
+}
+
+.fee-ledger-table th {
+  background: var(--table-header-bg, #f6f8fa);
+  font-weight: 600;
+}
+
+.fee-ledger-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.fee-ledger-inline-form input,
+.fee-ledger-inline-form select {
+  min-width: 120px;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+}
+
+.fee-ledger-inline-form button {
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+  font-weight: 500;
+}
+
+.fee-ledger-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.fee-ledger-row-actions button {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #d0d7de);
+  background: var(--card-bg, #fff);
+  cursor: pointer;
+}
+
+.fee-ledger-table tbody tr.fee-ledger-row--highlight {
+  background: linear-gradient(90deg, rgba(250, 204, 21, 0.35), rgba(253, 224, 71, 0.12));
+  box-shadow: inset 3px 0 0 0 #ca8a04;
+  transition: background 0.35s ease;
+}
+
+.fee-ledger-empty {
+  text-align: center;
+  color: var(--text-muted, #5c6570);
+  padding: 1.25rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.fee-ledger-summary-loading {
+  color: var(--text-muted, #5c6570);
+  font-size: 0.9rem;
+  margin: 0 0 1rem;
+}
+
+.fee-ledger-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.fee-ledger-toolbar--end {
+  justify-content: flex-end;
+}
+
+.fee-ledger-toolbar--filters {
+  gap: 0.4rem 0.65rem;
+}
+
+.fee-ledger-toolbar--filters select {
+  min-width: 140px;
+  max-width: 220px;
+}
+
+.fee-ledger-toolbar--filters input[type='date'] {
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+  font-size: 0.875rem;
+}
+
+.fee-ledger-toolbar-label {
+  font-size: 0.875rem;
+  color: var(--text-muted, #5c6570);
+}
+
+.fee-ledger-toolbar select {
+  min-width: 200px;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+}
+
+.fee-ledger-toolbar-export,
+.fee-ledger-toolbar-secondary {
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+  background: var(--card-bg, #fff);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.fee-ledger-toolbar-export {
+  border-color: var(--primary-color, #2563eb);
+  color: var(--primary-color, #2563eb);
+  font-weight: 500;
+}
+
+.fee-ledger-toolbar-export:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fee-ledger-inline-link {
+  font-size: 0.8rem;
+  color: var(--primary-color, #2563eb);
+  text-decoration: none;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.fee-ledger-inline-link:hover {
+  text-decoration: underline;
+  border-color: var(--border-color, #d0d7de);
+}
+
+.fee-ledger-report-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted, #5c6570);
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+}
+
+.fee-ledger-table-wrap--wide {
+  margin-bottom: 1rem;
+}
+
+.fee-ledger-table .fee-ledger-num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.fee-ledger-student-qr-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 5.5rem;
+}
+
+.fee-ledger-student-qr-cell__thumb {
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.fee-ledger-student-qr-cell__loading,
+.fee-ledger-student-qr-cell__err {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+}
+
+.fee-ledger-student-qr-cell__print {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: var(--card-bg, #fff);
+  cursor: pointer;
+}
+
+.fee-ledger-student-qr-cell__print:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.fee-ledger-student-qr-cell__print:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

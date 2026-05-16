@@ -2,6 +2,45 @@
   padding: 2rem;
 }
 
+.companies-pdf-section {
+  margin: 1.25rem 0;
+  padding: 1rem 1rem 1.25rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+}
+
+.companies-pdf-section-disabled .companies-pdf-fieldset {
+  opacity: 0.72;
+}
+
+.companies-pdf-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+.companies-pdf-hint {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.companies-pdf-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.companies-pdf-footnote {
+  display: block;
+  margin-top: 0.75rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -282,6 +321,49 @@
   margin-top: 2rem;
   padding-top: 1.5rem;
   border-top: 1px solid #e5e7eb;
+}
+
+.logo-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.logo-preview {
+  width: 100px;
+  height: 100px;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.logo-input {
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.logo-input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.logo-upload-section small {
+  color: #64748b;
+  font-size: 0.75rem;
 }
 
 @media (max-width: 768px) {

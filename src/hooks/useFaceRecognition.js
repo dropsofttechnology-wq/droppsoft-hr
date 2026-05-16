@@ -1,13 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
+import * as faceapi from '@vladmandic/face-api'
 
-const FACE_API_CDN = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.6.9/dist/face-api.min.js'
 const MODELS_PATH = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.6.9/model'
 
-export const useFaceRecognition = () => {
+export const useFaceRecognition = (options = {}) => {
   const [modelsLoaded, setModelsLoaded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const faceApiLoaded = useRef(false)
+  const detectionCache = useRef(null)
+  const lastDetectionTime = useRef(0)
+
+  const minConfidence = options.face_detection_confidence ?? 0.4
+  const throttleMs = options.face_detection_throttle_ms ?? 150
 
   useEffect(() => {
     loadFaceAPI()
@@ -17,57 +22,64 @@ export const useFaceRecognition = () => {
     if (faceApiLoaded.current) return
 
     try {
-      // Load face-api.js library
-      if (typeof window.faceapi === 'undefined') {
-        await loadScript(FACE_API_CDN)
-      }
+      setLoading(true)
+      setError(null)
 
-      // Load models
+      // Load SSD Mobilenet for better accuracy (faster and more accurate than TinyFaceDetector)
+      // Also load landmarks and recognition models
       await Promise.all([
-        window.faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_PATH),
-        window.faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_PATH),
-        window.faceapi.nets.faceRecognitionNet.loadFromUri(MODELS_PATH)
+        faceapi.nets.ssdMobilenetv1.loadFromUri(MODELS_PATH),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_PATH),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODELS_PATH)
       ])
 
       faceApiLoaded.current = true
       setModelsLoaded(true)
       setLoading(false)
+      console.log('Face API models loaded successfully (SSD Mobilenet - Fast & Accurate)')
     } catch (err) {
       console.error('Error loading face-api:', err)
-      setError(err.message)
+      setError(err.message || 'Failed to load face recognition models')
       setLoading(false)
     }
   }
 
-  const loadScript = (src) => {
-    return new Promise((resolve, reject) => {
-      if (document.querySelector(`script[src="${src}"]`)) {
-        resolve()
-        return
-      }
-
-      const script = document.createElement('script')
-      script.src = src
-      script.onload = resolve
-      script.onerror = reject
-      document.head.appendChild(script)
-    })
-  }
-
   const detectFace = async (videoElement) => {
-    if (!modelsLoaded || !window.faceapi) {
+    if (!modelsLoaded || !faceApiLoaded.current) {
       throw new Error('Face API models not loaded')
     }
 
-    const detection = await window.faceapi
-      .detectSingleFace(videoElement, new window.faceapi.TinyFaceDetectorOptions({
-        inputSize: 416,
-        scoreThreshold: 0.5
-      }))
-      .withFaceLandmarks()
-      .withFaceDescriptor()
+    if (!videoElement || videoElement.readyState !== 4) {
+      return null
+    }
 
-    return detection
+    const now = Date.now()
+    if (now - lastDetectionTime.current < throttleMs) {
+      return detectionCache.current
+    }
+    lastDetectionTime.current = now
+
+    try {
+      const detection = await faceapi
+        .detectSingleFace(videoElement, new faceapi.SsdMobilenetv1Options({
+          minConfidence: minConfidence,
+          maxResults: 1,
+          inputSize: 224
+        }))
+        .withFaceLandmarks()
+        .withFaceDescriptor()
+
+      if (detection && detection.detection && detection.detection.score >= minConfidence) {
+        // Cache the result
+        detectionCache.current = detection
+        return detection
+      }
+      
+      return null
+    } catch (err) {
+      console.error('Face detection error:', err)
+      return null
+    }
   }
 
   return {

@@ -12,6 +12,9 @@ import SuperAdminRoute from './components/SuperAdminRoute'
 import MobileAttendanceRoute from './components/MobileAttendanceRoute'
 import RouteFallback from './components/RouteFallback'
 import ExpenseAccessRoute from './components/ExpenseAccessRoute'
+import FeeLedgerAccessRoute from './components/FeeLedgerAccessRoute'
+import StudentAttendanceAccessRoute from './components/StudentAttendanceAccessRoute'
+import CbcGradingAccessRoute from './components/CbcGradingAccessRoute'
 
 const Login = lazy(() => import('./pages/Login'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -48,6 +51,9 @@ const ChangePassword = lazy(() => import('./pages/ChangePassword'))
 const ActivityLog = lazy(() => import('./pages/ActivityLog'))
 const LicensePlans = lazy(() => import('./pages/LicensePlans'))
 const OperationalExpenses = lazy(() => import('./pages/OperationalExpenses'))
+const StudentAttendanceRegister = lazy(() => import('./pages/StudentAttendanceRegister'))
+const FeeLedger = lazy(() => import('./pages/FeeLedger'))
+const SchoolCbcGrading = lazy(() => import('./pages/SchoolCbcGrading'))
 
 function HomeRedirect() {
   if (import.meta.env.VITE_CAPACITOR === 'true') {
@@ -272,6 +278,30 @@ function App() {
                   <ExpenseAccessRoute>
                     <OperationalExpenses />
                   </ExpenseAccessRoute>
+                }
+              />
+              <Route
+                path="school/fee-ledger"
+                element={
+                  <FeeLedgerAccessRoute>
+                    <FeeLedger />
+                  </FeeLedgerAccessRoute>
+                }
+              />
+              <Route
+                path="school/student-attendance"
+                element={
+                  <StudentAttendanceAccessRoute>
+                    <StudentAttendanceRegister />
+                  </StudentAttendanceAccessRoute>
+                }
+              />
+              <Route
+                path="school/cbc-grading"
+                element={
+                  <CbcGradingAccessRoute>
+                    <SchoolCbcGrading />
+                  </CbcGradingAccessRoute>
                 }
               />
             </Route>

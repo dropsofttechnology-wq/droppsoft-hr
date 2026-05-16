@@ -1,25 +1,39 @@
 import { useState, useEffect } from 'react'
 import { useCompany } from '../contexts/CompanyContext'
+import { useAuth } from '../contexts/AuthContext'
 import { getEmployees } from '../services/employeeService'
-import { databases, DATABASE_ID, COLLECTIONS } from '../config/appwrite'
-import { Query } from 'appwrite'
+import { listAttendanceRecords } from '../services/attendanceService'
+import { getCompanySettings } from '../utils/settingsHelper'
+import { isPeriodClosed } from '../services/periodClosureService'
+import { isClockInOnTime } from '../utils/attendanceHelper'
 import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns'
+import EmployeePicker from '../components/EmployeePicker'
 import './AttendanceHistory.css'
 
 const AttendanceHistory = () => {
   const { currentCompany } = useCompany()
+  const { user } = useAuth()
   const [employees, setEmployees] = useState([])
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [attendanceRecords, setAttendanceRecords] = useState([])
   const [loading, setLoading] = useState(false)
   const [period, setPeriod] = useState(format(new Date(), 'yyyy-MM'))
   const [summary, setSummary] = useState(null)
+  const [periodClosed, setPeriodClosed] = useState(null)
+  const [reportingSettings, setReportingSettings] = useState({})
 
   useEffect(() => {
     if (currentCompany) {
       loadEmployees()
+      getCompanySettings(currentCompany.$id, ['official_reporting_time', 'reporting_grace_minutes']).then(s => setReportingSettings(s || {}))
     }
   }, [currentCompany])
+
+  useEffect(() => {
+    if (currentCompany && period) {
+      checkPeriodClosure()
+    }
+  }, [currentCompany, period])
 
   useEffect(() => {
     if (selectedEmployee && period) {
@@ -27,9 +41,35 @@ const AttendanceHistory = () => {
     }
   }, [selectedEmployee, period])
 
+  const checkPeriodClosure = async () => {
+    if (!period || !currentCompany) return
+    try {
+      const closed = await isPeriodClosed(currentCompany.$id, period)
+      setPeriodClosed(closed)
+    } catch (error) {
+      console.error('Error checking period closure:', error)
+      setPeriodClosed(null)
+    }
+  }
+
   const loadEmployees = async () => {
     try {
       const data = await getEmployees(currentCompany.$id, { status: 'active' })
+
+      const role = user?.prefs?.role || 'admin'
+      if (role !== 'admin' && role !== 'super_admin' && role !== 'manager') {
+        // Employee view: try to find their own employee record by user_id or email
+        const self =
+          data.find((emp) => emp.user_id === user.$id) ||
+          data.find((emp) => emp.email && emp.email.toLowerCase() === user.email.toLowerCase())
+
+        if (self) {
+          setEmployees([self])
+          setSelectedEmployee(self)
+          return
+        }
+      }
+
       setEmployees(data)
     } catch (error) {
       console.error('Error loading employees:', error)
@@ -45,18 +85,14 @@ const AttendanceHistory = () => {
       const periodStart = startOfMonth(parseISO(`${period}-01`))
       const periodEnd = endOfMonth(periodStart)
 
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.ATTENDANCE,
-        [
-          Query.equal('user_id', userId),
-          Query.greaterThanEqual('date', format(periodStart, 'yyyy-MM-dd')),
-          Query.lessThanEqual('date', format(periodEnd, 'yyyy-MM-dd')),
-          Query.limit(5000)
-        ]
-      )
+      const response = await listAttendanceRecords({
+        companyId: currentCompany.$id,
+        userId,
+        from: format(periodStart, 'yyyy-MM-dd'),
+        to: format(periodEnd, 'yyyy-MM-dd')
+      })
 
-      const records = response.documents.sort((a, b) => 
+      const records = response.sort((a, b) => 
         new Date(b.date) - new Date(a.date)
       )
 
@@ -98,23 +134,24 @@ const AttendanceHistory = () => {
         <h1>Attendance History</h1>
       </div>
 
+      {periodClosed && (
+        <div className="alert alert-warning">
+          <strong>Period Closed:</strong> The period {period} is closed. Attendance records are read-only.
+        </div>
+      )}
+
       <div className="attendance-filters">
         <div className="filter-group">
           <label>Employee:</label>
-          <select
+          <EmployeePicker
+            employees={employees}
             value={selectedEmployee?.$id || ''}
             onChange={(e) => {
-              const emp = employees.find(e => e.$id === e.target.value)
+              const emp = employees.find((x) => x.$id === e.target.value)
               setSelectedEmployee(emp || null)
             }}
-          >
-            <option value="">Select Employee</option>
-            {employees.map(emp => (
-              <option key={emp.$id} value={emp.$id}>
-                {emp.name} {emp.employee_id ? `(${emp.employee_id})` : ''}
-              </option>
-            ))}
-          </select>
+            selectPlaceholder="All employees"
+          />
         </div>
 
         <div className="filter-group">
@@ -168,6 +205,7 @@ const AttendanceHistory = () => {
                 <th>Date</th>
                 <th>Clock In</th>
                 <th>Clock Out</th>
+                <th>Reporting</th>
                 <th>Hours Worked</th>
                 <th>Overtime</th>
                 <th>Method</th>
@@ -189,12 +227,21 @@ const AttendanceHistory = () => {
                   : record.clock_in_time 
                     ? 'Incomplete' 
                     : 'Absent'
+                const onTime = record.clock_in_time && isClockInOnTime(record.clock_in_time, record.date, reportingSettings)
+                const reportingLabel = record.clock_in_time ? (onTime ? 'On time' : 'Late') : '-'
 
                 return (
                   <tr key={record.$id}>
                     <td>{format(parseISO(record.date), 'dd MMM yyyy')}</td>
                     <td>{clockIn}</td>
                     <td>{clockOut}</td>
+                    <td>
+                      {record.clock_in_time ? (
+                        <span className={`reporting-badge reporting-${onTime ? 'on-time' : 'late'}`}>
+                          {reportingLabel}
+                        </span>
+                      ) : '-'}
+                    </td>
                     <td>{hours}</td>
                     <td>{overtime}</td>
                     <td>

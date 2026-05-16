@@ -27,16 +27,30 @@ export const CompanyProvider = ({ children }) => {
   const loadCompanies = async () => {
     try {
       const data = await getCompanies()
-      setCompanies(data)
-      
-      // Auto-select if only one company
-      if (data.length === 1) {
-        setCurrentCompany(data[0])
+
+      const role = user?.prefs?.role || 'admin'
+      const preferredCompanyId = user?.prefs?.companyId
+
+      // For employees, restrict visible companies to their assigned company (if set)
+      let visibleCompanies = data
+      if (role !== 'admin' && role !== 'super_admin' && role !== 'manager' && preferredCompanyId) {
+        const matched = data.filter((c) => c.$id === preferredCompanyId)
+        if (matched.length > 0) {
+          visibleCompanies = matched
+        }
+      }
+
+      setCompanies(visibleCompanies)
+
+      // Auto-select if only one visible company
+      if (visibleCompanies.length === 1) {
+        setCurrentCompany(visibleCompanies[0])
+        localStorage.setItem('currentCompanyId', visibleCompanies[0].$id)
       } else {
-        // Load from localStorage
+        // Load previous selection from localStorage
         const savedCompanyId = localStorage.getItem('currentCompanyId')
         if (savedCompanyId) {
-          const company = data.find(c => c.$id === savedCompanyId)
+          const company = visibleCompanies.find((c) => c.$id === savedCompanyId)
           if (company) {
             setCurrentCompany(company)
           }

@@ -1,0 +1,11 @@
+{
+  "appId": "com.dropsoft.hr",
+  "appName": "Dropsoft HR",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

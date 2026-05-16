@@ -35,6 +35,9 @@ import { createSalaryAdvanceRoutes } from './routes/salaryAdvance.js'
 import { createSubscriptionRoutes } from './routes/subscription.js'
 import { createShoppingRoutes } from './routes/shopping.js'
 import { createSchoolOperationalExpensesRoutes } from './routes/schoolOperationalExpenses.js'
+import { createSchoolFeeLedgerRoutes } from './routes/schoolFeeLedger.js'
+import { createSchoolStudentAttendanceRoutes } from './routes/schoolStudentAttendance.js'
+import { createSchoolCbcGradingRoutes } from './routes/schoolCbcGrading.js'
 import { createBackupRoutes } from './routes/backup.js'
 import { ensureAuthUserSchema, ensureDefaultSuperUser } from './utils/ensureDefaultSuperUser.js'
 import { ensurePayrollRunsSchema } from './utils/ensurePayrollRunsSchema.js'
@@ -129,6 +132,9 @@ export function createApp(db, options = {}) {
   app.use('/api/salary-advance', staffAndEmployee, createSalaryAdvanceRoutes(db))
   app.use('/api/shopping', staffAndEmployee, createShoppingRoutes(db))
   app.use('/api/school', createSchoolOperationalExpensesRoutes(db))
+  app.use('/api/school', createSchoolFeeLedgerRoutes(db))
+  app.use('/api/school', createSchoolStudentAttendanceRoutes(db))
+  app.use('/api/school', createSchoolCbcGradingRoutes(db))
   app.use('/api/users', requirePermission(db, 'manage_users'), createUsersRoutes(db))
   const superAdminOnly = requireRoles(db, ['super_admin'])
   app.use('/api/role-permissions', superAdminOnly, createRolePermissionsRoutes(db))

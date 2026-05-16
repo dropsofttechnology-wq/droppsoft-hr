@@ -1,0 +1,520 @@
+.school-cbc-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.school-cbc-page .page-header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+}
+
+.school-cbc-page .page-description {
+  color: var(--text-muted, #5c6570);
+  margin: 0 0 1rem;
+  line-height: 1.45;
+}
+
+.school-cbc-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color, #e2e6ea);
+  flex-wrap: wrap;
+}
+
+.school-cbc-tabs button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-muted, #5c6570);
+}
+
+.school-cbc-tabs button.active {
+  color: var(--primary-color, #2563eb);
+  border-bottom-color: var(--primary-color, #2563eb);
+  font-weight: 600;
+}
+
+.school-cbc-scale {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.school-cbc-scale-card {
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e6ea);
+  font-size: 0.85rem;
+}
+
+.school-cbc-scale-card strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.15rem;
+}
+
+.school-cbc-scale-card--4 { background: #ecfdf5; border-color: #a7f3d0; }
+.school-cbc-scale-card--3 { background: #eff6ff; border-color: #bfdbfe; }
+.school-cbc-scale-card--2 { background: #fffbeb; border-color: #fde68a; }
+.school-cbc-scale-card--1 { background: #fef2f2; border-color: #fecaca; }
+
+.school-cbc-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.school-cbc-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #5c6570);
+}
+
+.school-cbc-form input,
+.school-cbc-form select {
+  min-width: 140px;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+}
+
+.school-cbc-btn {
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+  background: var(--card-bg, #fff);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.school-cbc-btn--primary {
+  border-color: var(--primary-color, #2563eb);
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+  font-weight: 500;
+}
+
+.school-cbc-btn--muted {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.school-cbc-sent-badge {
+  margin: 0.5rem 0 1rem;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.school-cbc-sent-badge__pill {
+  display: inline-block;
+  margin-right: 0.35rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.school-cbc-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-color, #e2e6ea);
+  border-radius: 10px;
+  background: var(--card-bg, #fff);
+}
+
+.school-cbc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.school-cbc-table th,
+.school-cbc-table td {
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #e8eaed);
+}
+
+.school-cbc-table th {
+  background: var(--table-header-bg, #f6f8fa);
+  font-weight: 600;
+}
+
+.school-cbc-level-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.school-cbc-level-btn {
+  min-width: 2.5rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+  background: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.school-cbc-level-btn.active.ee { background: #d1fae5; border-color: #059669; color: #065f46; }
+.school-cbc-level-btn.active.me { background: #dbeafe; border-color: #2563eb; color: #1e40af; }
+.school-cbc-level-btn.active.ae { background: #ffedd5; border-color: #d97706; color: #9a3412; }
+.school-cbc-level-btn.active.be { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
+
+.school-cbc-savebar {
+  position: sticky;
+  bottom: 0;
+  margin-top: 1rem;
+  padding: 0.75rem 0;
+  background: linear-gradient(180deg, transparent, var(--card-bg, #fff) 30%);
+}
+
+.school-cbc-transcript {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid #e2e6ea;
+  border-radius: 8px;
+}
+
+.school-cbc-transcript h2 {
+  margin: 0 0 0.25rem;
+  text-align: center;
+}
+
+.school-cbc-transcript-sub {
+  text-align: center;
+  color: #64748b;
+  margin: 0 0 1.25rem;
+}
+
+.school-cbc-transcript-area {
+  margin-bottom: 1rem;
+  page-break-inside: avoid;
+}
+
+.school-cbc-transcript-area h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  border-bottom: 2px solid #0f172a;
+  padding-bottom: 0.25rem;
+}
+
+@media print {
+  .school-cbc-no-print {
+    display: none !important;
+  }
+  .school-cbc-transcript {
+    border: none;
+    box-shadow: none;
+  }
+}
+
+/* Progress report tab — actions, bulk email, modal */
+.school-cbc-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.school-cbc-bulk-banner {
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #c7d2fe);
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+}
+
+.school-cbc-bulk-banner__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.school-cbc-bulk-banner__label {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4338ca;
+}
+
+.school-cbc-bulk-banner__toolbar .school-cbc-bulk-banner__label {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 6rem;
+}
+
+.school-cbc-bulk-banner__toolbar-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.school-cbc-btn--configure {
+  font-weight: 600;
+  border-color: var(--border-color, #94a3b8);
+  background: var(--card-bg, #fff);
+  color: #334155;
+}
+
+.school-cbc-btn--configure.is-open {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 1px #818cf8;
+}
+
+.school-cbc-btn--configure:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.school-cbc-btn--outline {
+  border-color: #94a3b8;
+  background: transparent;
+  color: #475569;
+}
+
+.school-cbc-btn--outline:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.school-cbc-mail-card {
+  margin: 0.75rem 0 0;
+  padding: 1rem 1.15rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--card-bg, #fff);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.school-cbc-mail-card__intro {
+  margin: 0 0 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.school-cbc-mail-card__loading {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.school-cbc-mail-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.85rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.school-cbc-mail-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--text-muted, #475569);
+}
+
+.school-cbc-mail-form__field--narrow {
+  max-width: 120px;
+}
+
+.school-cbc-mail-form__field--check {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.school-cbc-mail-form__field--check span {
+  flex: 1 1 auto;
+}
+
+.school-cbc-mail-form__field--check input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
+}
+
+.school-cbc-mail-form__field input[type='text'],
+.school-cbc-mail-form__field input[type='email'],
+.school-cbc-mail-form__field input[type='password'] {
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #d0d7de);
+  font-size: 0.875rem;
+  background: var(--card-bg, #fff);
+  color: var(--text-color, #0f172a);
+}
+
+.school-cbc-mail-form__field input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.school-cbc-mail-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.school-cbc-bulk-banner__hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: #4c1d95;
+  opacity: 0.9;
+}
+
+.school-cbc-btn--bulk {
+  padding: 0.55rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-color: #4338ca;
+  background: #4f46e5;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+}
+
+.school-cbc-btn--bulk:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.school-cbc-btn--bulk:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.school-cbc-modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 10040;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.school-cbc-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.school-cbc-modal {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 1.35rem 1.5rem;
+  border-radius: 12px;
+  background: var(--card-bg, #fff);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  max-height: min(86vh, 560px);
+  overflow-y: auto;
+}
+
+.school-cbc-modal__title {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+}
+
+.school-cbc-modal__progress {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.school-cbc-modal__warn {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: #b45309;
+}
+
+.school-cbc-modal__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.school-cbc-modal__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4f46e5, #6366f1);
+  transition: width 0.2s ease-out;
+}
+
+.school-cbc-modal__summary {
+  margin: 0 0 1rem;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.school-cbc-modal__summary--bad {
+  color: #b91c1c;
+}
+
+.school-cbc-modal__failures {
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.school-cbc-modal__failures-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #991b1b;
+}
+
+.school-cbc-modal__failures ul {
+  margin: 0;
+  padding-left: 1rem;
+  list-style: disc;
+  font-size: 0.8rem;
+}
+
+.school-cbc-modal__failures li {
+  margin-bottom: 0.35rem;
+}
+
+.school-cbc-modal__fail-student {
+  display: block;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.school-cbc-modal__fail-msg {
+  color: #7f1d1d;
+}
+
+.school-cbc-modal__close {
+  width: 100%;
+  margin-top: 0.25rem;
+}

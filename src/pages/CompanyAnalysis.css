@@ -1,0 +1,164 @@
+.company-analysis {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-bottom: var(--spacing-xl);
+}
+
+.company-analysis h1 {
+  margin: 0 0 var(--spacing-xs) 0;
+  color: var(--color-text-primary);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.company-analysis__subtitle {
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 1rem;
+}
+
+.company-analysis__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-xl);
+}
+
+.company-analysis__meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-xs) var(--spacing-lg);
+  margin: var(--spacing-md) 0 0 0;
+  font-size: 0.9rem;
+}
+
+.company-analysis__meta dt {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.company-analysis__meta dd {
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.company-analysis__alert {
+  margin-bottom: var(--spacing-lg);
+}
+
+.company-analysis__loading {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.company-analysis__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.company-analysis__kpi {
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-lg);
+  border-left: 4px solid var(--color-accent-blue);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.company-analysis__kpi-label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.company-analysis__kpi-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+.company-analysis__kpi-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-light);
+}
+
+.company-analysis__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-lg);
+}
+
+@media (max-width: 1024px) {
+  .company-analysis__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.company-analysis__card {
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-lg);
+}
+
+.company-analysis__card--wide {
+  grid-column: 1 / -1;
+}
+
+.company-analysis__card h2 {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 1.15rem;
+  color: var(--color-text-primary);
+}
+
+.company-analysis__card-desc {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.company-analysis__chart {
+  min-height: 280px;
+}
+
+.company-analysis__chart--pie {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.company-analysis__empty {
+  margin: 0;
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+}
+
+.company-analysis-tooltip {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  box-shadow: var(--shadow-md);
+  font-size: 0.85rem;
+}
+
+.company-analysis-tooltip__muted {
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-xs);
+  font-size: 0.8rem;
+}
+
+.recharts-default-tooltip {
+  border-radius: var(--radius-sm) !important;
+}

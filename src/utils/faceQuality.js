@@ -126,8 +126,12 @@ export const calculateFaceAngle = (landmarks) => {
 
 /**
  * Validate all quality metrics
+ * @param {ImageData} imageData
+ * @param {Object} faceDetection
+ * @param {Object} faceLandmarks
+ * @param {Object|boolean} options - Custom thresholds from Settings, or relaxed=true for auto-capture
  */
-export const validateFaceQuality = (imageData, faceDetection, faceLandmarks) => {
+export const validateFaceQuality = (imageData, faceDetection, faceLandmarks, options = {}) => {
   const brightness = calculateBrightness(imageData)
   const contrast = calculateContrast(imageData)
   const sharpness = calculateSharpness(imageData)
@@ -148,30 +152,39 @@ export const validateFaceQuality = (imageData, faceDetection, faceLandmarks) => 
     issues: []
   }
 
-  // Validation thresholds
-  if (brightness < 30 || brightness > 90) {
+  // Use custom thresholds from Settings (options object), or defaults
+  const isRelaxed = options === true
+  const minBrightness = typeof options === 'object' && options?.face_min_brightness != null ? options.face_min_brightness : (isRelaxed ? 25 : 30)
+  const maxBrightness = typeof options === 'object' && options?.face_max_brightness != null ? options.face_max_brightness : (isRelaxed ? 95 : 90)
+  const minContrast = typeof options === 'object' && options?.face_min_contrast != null ? options.face_min_contrast : (isRelaxed ? 15 : 20)
+  const minSharpness = typeof options === 'object' && options?.face_min_sharpness != null ? options.face_min_sharpness : (isRelaxed ? 35 : 50)
+  const minCoverage = typeof options === 'object' && options?.face_min_coverage != null ? options.face_min_coverage : (isRelaxed ? 12 : 15)
+  const maxCoverage = typeof options === 'object' && options?.face_max_coverage != null ? options.face_max_coverage : (isRelaxed ? 65 : 60)
+  const maxAngle = typeof options === 'object' && options?.face_max_angle != null ? options.face_max_angle : (isRelaxed ? 20 : 15)
+
+  if (brightness < minBrightness || brightness > maxBrightness) {
     quality.isValid = false
-    quality.issues.push(`Brightness should be 30-90% (current: ${brightness.toFixed(1)}%)`)
+    quality.issues.push(`Brightness should be ${minBrightness}-${maxBrightness}% (current: ${brightness.toFixed(1)}%)`)
   }
 
-  if (contrast < 20) {
+  if (contrast < minContrast) {
     quality.isValid = false
     quality.issues.push('Image contrast is too low')
   }
 
-  if (sharpness < 50) {
+  if (sharpness < minSharpness) {
     quality.isValid = false
     quality.issues.push('Image is too blurry')
   }
 
-  if (faceCoverage < 15 || faceCoverage > 60) {
+  if (faceCoverage < minCoverage || faceCoverage > maxCoverage) {
     quality.isValid = false
-    quality.issues.push(`Face should be 15-60% of frame (current: ${faceCoverage.toFixed(1)}%)`)
+    quality.issues.push(`Face should be ${minCoverage}-${maxCoverage}% of frame (current: ${faceCoverage.toFixed(1)}%)`)
   }
 
-  if (faceAngle > 15) {
+  if (faceAngle > maxAngle) {
     quality.isValid = false
-    quality.issues.push(`Face angle should be <15° (current: ${faceAngle.toFixed(1)}°)`)
+    quality.issues.push(`Face angle should be <${maxAngle}° (current: ${faceAngle.toFixed(1)}°)`)
   }
 
   return quality

@@ -1,10 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import toast from 'react-hot-toast'
+import { useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { useCompany } from '../contexts/CompanyContext'
 import { useAuth } from '../contexts/AuthContext'
 import { hasPermission } from '../utils/permissions'
 import { isLocalDataSource } from '../config/dataSource'
+import { DATABASE_ID } from '../config/appwrite'
+import { formatMoneyAmount } from '../utils/formatMoney'
 import { getEmployees } from '../services/employeeService'
 import {
   getExpenseCategories,
@@ -16,6 +19,7 @@ import {
   updateExpenseSupplier,
   deleteExpenseSupplier,
   getOperationalExpenses,
+  getOperationalExpense,
   createOperationalExpense,
   updateOperationalExpense,
   deleteOperationalExpense,
@@ -72,9 +76,12 @@ const emptyExpense = {
   notes: ''
 }
 
+const EXPENSE_PAGE_SIZE_OPTIONS = [25, 50, 100]
+
 const OperationalExpenses = () => {
   const { currentCompany } = useCompany()
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const canEdit = hasPermission(user, 'operational_expenses')
   const canApprove = hasPermission(user, 'operational_expenses_approval')
 
@@ -85,6 +92,10 @@ const OperationalExpenses = () => {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
   const [expenseSearch, setExpenseSearch] = useState('')
+  const [debouncedExpenseSearch, setDebouncedExpenseSearch] = useState('')
+  const [expensePage, setExpensePage] = useState(0)
+  const [expenseTotal, setExpenseTotal] = useState(0)
+  const [expensePageSize, setExpensePageSize] = useState(25)
 
   const [catForm, setCatForm] = useState({ name: '', code: '' })
   const [editingCat, setEditingCat] = useState(null)
@@ -107,36 +118,75 @@ const OperationalExpenses = () => {
   const [paidOn, setPaidOn] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [paidMethod, setPaidMethod] = useState('')
   const [seedingCategories, setSeedingCategories] = useState(false)
+  const [highlightFlashId, setHighlightFlashId] = useState(null)
+  const flashTimerRef = useRef(null)
+  const highlightResolveRef = useRef(null)
 
   const companyId = currentCompany?.$id
+  const expensesBackendReady = isLocalDataSource() || !!DATABASE_ID
+  const highlightInUrl = Boolean(searchParams.get('highlight')?.trim())
 
-  const loadAll = async () => {
-    if (!companyId || !isLocalDataSource()) return
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedExpenseSearch(expenseSearch.trim()), 280)
+    return () => window.clearTimeout(t)
+  }, [expenseSearch])
+
+  useEffect(() => {
+    setExpensePage(0)
+  }, [companyId, statusFilter, debouncedExpenseSearch, expensePageSize])
+
+  useEffect(() => {
+    if (highlightInUrl || expenseTotal <= 0) return
+    const maxPage = Math.max(0, Math.ceil(expenseTotal / expensePageSize) - 1)
+    if (expensePage > maxPage) setExpensePage(maxPage)
+  }, [highlightInUrl, expenseTotal, expensePage, expensePageSize])
+
+  const loadAll = useCallback(async () => {
+    if (!companyId) return
     try {
       setLoading(true)
-      const [c, s, e] = await Promise.all([
+      const expOpts = {
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        q: debouncedExpenseSearch || undefined,
+        ...(highlightInUrl
+          ? {}
+          : { limit: expensePageSize, offset: expensePage * expensePageSize })
+      }
+      const [c, s, expResult] = await Promise.all([
         getExpenseCategories(companyId),
         getExpenseSuppliers(companyId),
-        getOperationalExpenses(companyId, {
-          status: statusFilter === 'all' ? undefined : statusFilter
-        })
+        getOperationalExpenses(companyId, expOpts)
       ])
       setCategories(c)
       setSuppliers(s)
-      setExpenses(e)
+      setExpenses(expResult.items)
+      setExpenseTotal(expResult.total)
     } catch (err) {
       toast.error(err.message || 'Failed to load data')
     } finally {
       setLoading(false)
     }
-  }
+  }, [
+    companyId,
+    statusFilter,
+    debouncedExpenseSearch,
+    expensePage,
+    expensePageSize,
+    highlightInUrl
+  ])
 
   useEffect(() => {
     loadAll()
-  }, [companyId, statusFilter])
+  }, [loadAll])
 
   useEffect(() => {
-    if (!companyId || !isLocalDataSource()) return
+    return () => {
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!companyId) return
     ;(async () => {
       try {
         const em = await getEmployees(companyId, { status: 'active' })
@@ -151,35 +201,92 @@ const OperationalExpenses = () => {
   const supplierName = (id) => (!id ? '—' : suppliers.find((s) => s.$id === id)?.name || '—')
   const employeeName = (id) => (!id ? '—' : employees.find((e) => e.$id === id)?.name || '—')
 
-  const filteredExpenses = useMemo(() => {
-    const q = expenseSearch.trim().toLowerCase()
-    if (!q) return expenses
-    return expenses.filter((row) => {
-      const desc = String(row.description || '').toLowerCase()
-      const ref = String(row.reference || '').toLowerCase()
-      const st = String(row.status || '').toLowerCase()
-      const idFrag = String(row.$id || '').toLowerCase()
-      const notes = String(row.notes || '').toLowerCase()
-      const cat = String(categoryName(row.category_id)).toLowerCase()
-      const sup = String(supplierName(row.supplier_id)).toLowerCase()
-      const emp = String(employeeName(row.linked_employee_id)).toLowerCase()
-      return (
-        desc.includes(q) ||
-        ref.includes(q) ||
-        st.includes(q) ||
-        idFrag.includes(q) ||
-        notes.includes(q) ||
-        cat.includes(q) ||
-        sup.includes(q) ||
-        emp.includes(q)
+  useEffect(() => {
+    const stripHighlight = () => {
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev)
+          p.delete('highlight')
+          return p
+        },
+        { replace: true }
       )
-    })
-  }, [expenses, expenseSearch, categories, suppliers, employees])
+    }
+
+    const raw = searchParams.get('highlight')?.trim()
+    if (!raw || loading || !companyId) return
+
+    const wantId = String(raw)
+    const rowMatch = (r) => String(r.$id || r.id) === wantId
+
+    if (expenses.some(rowMatch)) {
+      const raf = window.requestAnimationFrame(() => {
+        const el = document.getElementById(`op-ex-row-${wantId}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          setHighlightFlashId(wantId)
+          if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current)
+          flashTimerRef.current = window.setTimeout(() => {
+            setHighlightFlashId(null)
+            flashTimerRef.current = null
+            stripHighlight()
+          }, 2800)
+        } else {
+          stripHighlight()
+        }
+      })
+      return () => window.cancelAnimationFrame(raf)
+    }
+
+    if (statusFilter !== 'all') {
+      setStatusFilter('all')
+      return
+    }
+
+    if (expenseSearch.trim()) {
+      setExpenseSearch('')
+      return
+    }
+
+    if (!expenses.some(rowMatch)) {
+      if (highlightResolveRef.current === wantId) return
+      highlightResolveRef.current = wantId
+      let cancelled = false
+      ;(async () => {
+        try {
+          const row = await getOperationalExpense(wantId, companyId)
+          if (cancelled) return
+          if (String(row.company_id) !== String(companyId)) {
+            toast.error('That expense belongs to another company.')
+            stripHighlight()
+            return
+          }
+          const { items, total } = await getOperationalExpenses(companyId, {})
+          if (cancelled) return
+          setExpenses(items)
+          setExpenseTotal(total)
+        } catch {
+          if (!cancelled) {
+            toast.error('That expense was not found (it may have been deleted).')
+            stripHighlight()
+          }
+        } finally {
+          if (highlightResolveRef.current === wantId) highlightResolveRef.current = null
+        }
+      })()
+      return () => {
+        cancelled = true
+      }
+    }
+  }, [loading, expenses, expenseSearch, statusFilter, searchParams, setSearchParams, companyId])
 
   const sortedCategories = useMemo(
     () => [...categories].sort((a, b) => String(a.name).localeCompare(String(b.name))),
     [categories]
   )
+
+  const expensePageCount = Math.max(1, Math.ceil(expenseTotal / expensePageSize) || 1)
+  const showExpensePager = !highlightInUrl && expenseTotal > expensePageSize
 
   const handleSeedSuggestedCategories = async () => {
     if (!companyId) return
@@ -209,68 +316,73 @@ const OperationalExpenses = () => {
     }
   }
 
-  const handleExportCsv = () => {
-    if (!filteredExpenses.length) {
-      if (!expenses.length) {
+  const handleExportCsv = async () => {
+    if (!companyId) return
+    try {
+      const { items } = await getOperationalExpenses(companyId, {
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        q: debouncedExpenseSearch || undefined
+      })
+      if (!items.length) {
         toast.error('No rows to export for the current filter')
-      } else {
-        toast.error('No rows match your search — clear the search box or change filters')
+        return
       }
-      return
+      const headers = [
+        'incurred_on',
+        'description',
+        'category',
+        'supplier',
+        'staff',
+        'amount',
+        'currency',
+        'tax_amount',
+        'status',
+        'paid_on',
+        'payment_method',
+        'reference',
+        'notes',
+        'rejected_reason',
+        'void_reason'
+      ]
+      const lines = [headers.join(',')]
+      for (const row of items) {
+        lines.push(
+          [
+            escapeCsvCell(String(row.incurred_on || '').slice(0, 10)),
+            escapeCsvCell(row.description),
+            escapeCsvCell(categoryName(row.category_id)),
+            escapeCsvCell(supplierName(row.supplier_id)),
+            escapeCsvCell(employeeName(row.linked_employee_id)),
+            escapeCsvCell(row.amount),
+            escapeCsvCell(row.currency),
+            escapeCsvCell(row.tax_amount != null ? row.tax_amount : ''),
+            escapeCsvCell(row.status),
+            escapeCsvCell(row.paid_on ? String(row.paid_on).slice(0, 10) : ''),
+            escapeCsvCell(row.payment_method),
+            escapeCsvCell(row.reference),
+            escapeCsvCell(row.notes),
+            escapeCsvCell(row.rejected_reason),
+            escapeCsvCell(row.void_reason)
+          ].join(',')
+        )
+      }
+      const stamp = format(new Date(), 'yyyy-MM-dd')
+      const searchTag = debouncedExpenseSearch ? '-search' : ''
+      const fname = `operational-expenses-${String(statusFilter)}${searchTag}-${stamp}.csv`
+      const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fname
+      a.rel = 'noopener'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('CSV downloaded')
+    } catch (err) {
+      toast.error(err.message || 'Export failed')
     }
-    const headers = [
-      'incurred_on',
-      'description',
-      'category',
-      'supplier',
-      'staff',
-      'amount',
-      'currency',
-      'tax_amount',
-      'status',
-      'paid_on',
-      'payment_method',
-      'reference',
-      'notes',
-      'rejected_reason',
-      'void_reason'
-    ]
-    const lines = [headers.join(',')]
-    for (const row of filteredExpenses) {
-      lines.push(
-        [
-          escapeCsvCell(String(row.incurred_on || '').slice(0, 10)),
-          escapeCsvCell(row.description),
-          escapeCsvCell(categoryName(row.category_id)),
-          escapeCsvCell(supplierName(row.supplier_id)),
-          escapeCsvCell(employeeName(row.linked_employee_id)),
-          escapeCsvCell(row.amount),
-          escapeCsvCell(row.currency),
-          escapeCsvCell(row.tax_amount != null ? row.tax_amount : ''),
-          escapeCsvCell(row.status),
-          escapeCsvCell(row.paid_on ? String(row.paid_on).slice(0, 10) : ''),
-          escapeCsvCell(row.payment_method),
-          escapeCsvCell(row.reference),
-          escapeCsvCell(row.notes),
-          escapeCsvCell(row.rejected_reason),
-          escapeCsvCell(row.void_reason)
-        ].join(',')
-      )
-    }
-    const stamp = format(new Date(), 'yyyy-MM-dd')
-    const searchTag = expenseSearch.trim() ? '-search' : ''
-    const fname = `operational-expenses-${String(statusFilter)}${searchTag}-${stamp}.csv`
-    const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = fname
-    a.rel = 'noopener'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    toast.success('CSV downloaded')
   }
 
   const handleSaveCategory = async (e) => {
@@ -283,7 +395,7 @@ const OperationalExpenses = () => {
     }
     try {
       if (editingCat) {
-        await updateExpenseCategory(editingCat.$id, { name, code: catForm.code.trim() })
+        await updateExpenseCategory(companyId, editingCat.$id, { name, code: catForm.code.trim() })
         toast.success('Category updated')
       } else {
         await createExpenseCategory(companyId, { name, code: catForm.code.trim() })
@@ -307,7 +419,7 @@ const OperationalExpenses = () => {
     }
     try {
       if (editingSup) {
-        await updateExpenseSupplier(editingSup.$id, { ...supForm, name })
+        await updateExpenseSupplier(companyId, editingSup.$id, { ...supForm, name })
         toast.success('Supplier updated')
       } else {
         await createExpenseSupplier(companyId, {
@@ -359,7 +471,7 @@ const OperationalExpenses = () => {
     }
     try {
       if (editingExpense) {
-        await updateOperationalExpense(editingExpense.$id, payload)
+        await updateOperationalExpense(companyId, editingExpense.$id, payload)
         toast.success('Expense updated')
       } else {
         await createOperationalExpense(companyId, payload)
@@ -391,20 +503,6 @@ const OperationalExpenses = () => {
     })
   }
 
-  if (!isLocalDataSource()) {
-    return (
-      <div className="operational-expenses-page">
-        <div className="page-header">
-          <h1>Operational expenses</h1>
-        </div>
-        <p className="page-description">
-          Recording school running costs is available when using the <strong>local desktop / SQLite API</strong>.
-          Connect the app to your LAN server or use the desktop build, then open this page again.
-        </p>
-      </div>
-    )
-  }
-
   if (!currentCompany) {
     return (
       <div className="operational-expenses-page">
@@ -412,6 +510,23 @@ const OperationalExpenses = () => {
           <h1>Operational expenses</h1>
         </div>
         <p className="page-description">Select a company in the header to manage expenses.</p>
+      </div>
+    )
+  }
+
+  if (!expensesBackendReady) {
+    return (
+      <div className="operational-expenses-page">
+        <div className="page-header">
+          <h1>Operational expenses</h1>
+        </div>
+        <p className="page-description">
+          Expenses need a configured backend. Use the <strong>desktop / local API</strong> (LAN or{' '}
+          <code>VITE_USE_LOCAL_API=true</code>), or set <code>VITE_APPWRITE_DATABASE_ID</code> in your web env and
+          create the <code>expense_categories</code>, <code>expense_suppliers</code>, and{' '}
+          <code>operational_expenses</code> collections (see <code>appwrite-collections-json.json</code> or run{' '}
+          <code>node appwrite-auto-setup.js</code>).
+        </p>
       </div>
     )
   }
@@ -583,11 +698,26 @@ const OperationalExpenses = () => {
               <option value="void">Void</option>
             </select>
           </label>
+          <label>
+            Per page{' '}
+            <select
+              value={expensePageSize}
+              onChange={(e) => setExpensePageSize(Number(e.target.value))}
+              disabled={highlightInUrl}
+              aria-label="Rows per page"
+            >
+              {EXPENSE_PAGE_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="op-ex-search">
             Search
             <input
               type="search"
-              placeholder="Description, reference, category, supplier…"
+              placeholder="Description, reference, category, supplier, staff…"
               value={expenseSearch}
               onChange={(e) => setExpenseSearch(e.target.value)}
               autoComplete="off"
@@ -757,15 +887,19 @@ const OperationalExpenses = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredExpenses.map((row) => (
-                  <tr key={row.$id}>
+                {expenses.map((row) => (
+                  <tr
+                    key={row.$id}
+                    id={`op-ex-row-${String(row.$id)}`}
+                    className={highlightFlashId === String(row.$id) ? 'op-ex-row--highlight' : undefined}
+                  >
                     <td>{String(row.incurred_on || '').slice(0, 10)}</td>
                     <td>{row.description}</td>
                     <td>{categoryName(row.category_id)}</td>
                     <td>{supplierName(row.supplier_id)}</td>
                     <td>{employeeName(row.linked_employee_id)}</td>
                     <td>
-                      {row.amount != null ? Number(row.amount).toLocaleString() : '—'}
+                      {formatMoneyAmount(row.amount, { prefix: 'KES ' })}
                       {row.currency ? ` ${row.currency}` : ''}
                     </td>
                     <td>
@@ -789,7 +923,7 @@ const OperationalExpenses = () => {
                             className="linkish"
                             onClick={async () => {
                               try {
-                                await approveOperationalExpense(row.$id)
+                                await approveOperationalExpense(companyId, row.$id)
                                 toast.success('Approved')
                                 await loadAll()
                               } catch (err) {
@@ -832,11 +966,52 @@ const OperationalExpenses = () => {
                 ))}
               </tbody>
             </table>
-            {!loading && !filteredExpenses.length && (
+            {showExpensePager && (
+              <div className="op-ex-pager" role="navigation" aria-label="Expense pages">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={expensePage <= 0}
+                  onClick={() => setExpensePage(0)}
+                >
+                  First
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={expensePage <= 0}
+                  onClick={() => setExpensePage((p) => Math.max(0, p - 1))}
+                >
+                  Previous
+                </button>
+                <span className="muted op-ex-pager-meta">
+                  Page {expensePage + 1} of {expensePageCount} · {expenseTotal} total
+                </span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={expensePage + 1 >= expensePageCount}
+                  onClick={() => setExpensePage((p) => p + 1)}
+                >
+                  Next
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  disabled={expensePage + 1 >= expensePageCount}
+                  onClick={() => setExpensePage(Math.max(0, expensePageCount - 1))}
+                >
+                  Last
+                </button>
+              </div>
+            )}
+            {!loading && !expenses.length && (
               <p className="muted">
-                {expenses.length && expenseSearch.trim()
-                  ? 'No rows match your search.'
-                  : 'No expenses for this filter.'}
+                {expenseTotal > 0
+                  ? 'No rows on this page.'
+                  : debouncedExpenseSearch
+                    ? 'No expenses match this search.'
+                    : 'No expenses for this filter.'}
               </p>
             )}
           </div>
@@ -853,7 +1028,7 @@ const OperationalExpenses = () => {
         onConfirm={async () => {
           if (!confirmDelCat) return
           try {
-            await deleteExpenseCategory(confirmDelCat.$id)
+            await deleteExpenseCategory(companyId, confirmDelCat.$id)
             toast.success('Deleted')
             setConfirmDelCat(null)
             await loadAll()
@@ -873,7 +1048,7 @@ const OperationalExpenses = () => {
         onConfirm={async () => {
           if (!confirmDelSup) return
           try {
-            await deleteExpenseSupplier(confirmDelSup.$id)
+            await deleteExpenseSupplier(companyId, confirmDelSup.$id)
             toast.success('Deleted')
             setConfirmDelSup(null)
             await loadAll()
@@ -893,7 +1068,7 @@ const OperationalExpenses = () => {
         onConfirm={async () => {
           if (!confirmDelExp) return
           try {
-            await deleteOperationalExpense(confirmDelExp.$id)
+            await deleteOperationalExpense(companyId, confirmDelExp.$id)
             toast.success('Deleted')
             setConfirmDelExp(null)
             await loadAll()
@@ -929,7 +1104,7 @@ const OperationalExpenses = () => {
                     return
                   }
                   try {
-                    await rejectOperationalExpense(rejectModal.$id, r)
+                    await rejectOperationalExpense(companyId, rejectModal.$id, r)
                     toast.success('Rejected')
                     setRejectModal(null)
                     setRejectReason('')
@@ -972,7 +1147,7 @@ const OperationalExpenses = () => {
                     return
                   }
                   try {
-                    await voidOperationalExpense(voidModal.$id, r)
+                    await voidOperationalExpense(companyId, voidModal.$id, r)
                     toast.success('Voided')
                     setVoidModal(null)
                     setVoidReason('')
@@ -1019,7 +1194,7 @@ const OperationalExpenses = () => {
                     return
                   }
                   try {
-                    await markOperationalExpensePaid(paidModal.$id, paidOn, paidMethod)
+                    await markOperationalExpensePaid(companyId, paidModal.$id, paidOn, paidMethod)
                     toast.success('Marked paid')
                     setPaidModal(null)
                     await loadAll()

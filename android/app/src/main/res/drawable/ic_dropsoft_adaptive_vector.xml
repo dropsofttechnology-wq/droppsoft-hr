@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Matches public/icon.svg: crisp vector adaptive foreground (scales to all densities) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+    <path
+        android:pathData="M 40,32 L 40,96 L 58,96 C 86,96 100,80 100,64 C 100,48 86,32 60,32 Z"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M 54,48 L 54,80 L 58,80 C 72,80 80,70 80,64 C 80,58 72,48 60,48 Z"
+        android:fillColor="@color/ic_launcher_background" />
+    <path
+        android:pathData="M 100,30 L 106,36 L 100,42 L 94,36 Z"
+        android:fillColor="#FF2DD4BF" />
+</vector>
