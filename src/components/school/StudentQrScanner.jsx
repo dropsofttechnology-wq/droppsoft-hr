@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useCompany } from '../../contexts/CompanyContext'
 import { isLocalDataSource } from '../../config/dataSource'
 import { hasPermission } from '../../utils/permissions'
-import { parseStudentQrPayload } from '../../utils/studentQr'
+import { parseStudentQrPayload, shouldIgnoreFastScanDuplicate } from '../../utils/studentQr'
 import { buildStudentMarkPath } from '../../utils/studentAttendanceNav'
 import * as feeApi from '../../services/schoolFeeLedgerService'
 import * as attendanceApi from '../../services/schoolStudentAttendanceService'
@@ -53,11 +53,11 @@ function playFastSuccessBeep() {
     o.type = 'sine'
     o.connect(g)
     g.connect(ctx.destination)
-    o.frequency.value = 1420
-    g.gain.setValueAtTime(0.09, ctx.currentTime)
-    g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.06)
+    o.frequency.value = 1560
+    g.gain.setValueAtTime(0.1, ctx.currentTime)
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05)
     o.start(ctx.currentTime)
-    o.stop(ctx.currentTime + 0.07)
+    o.stop(ctx.currentTime + 0.055)
   } catch {
     /* ignore */
   }
@@ -97,6 +97,22 @@ function readInitialFastAction(canAttendance, canFeeLedger) {
   return FAST_ACTION.mark_present
 }
 
+function persistFastMode(enabled) {
+  try {
+    localStorage.setItem(STORAGE_FAST_MODE, enabled ? 'true' : 'false')
+  } catch {
+    /* ignore */
+  }
+}
+
+function persistFastAction(action) {
+  try {
+    localStorage.setItem(STORAGE_FAST_ACTION, action)
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Isolated student roster QR scanner (separate from staff attendance terminal).
  * @param {{ companyId: string, onClose: () => void, user: object | null }} props
@@ -110,10 +126,11 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
   const processingRef = useRef(false)
   const fastModeRef = useRef(false)
   const fastActionRef = useRef(readInitialFastAction(canAttendance, canFeeLedger))
-  const lastFastIdRef = useRef('')
-  const lastFastTimeRef = useRef(0)
+  /** @type {React.MutableRefObject<{ studentId: string, scannedAtMs: number } | null>} */
+  const lastFastScanRef = useRef(null)
   const studentsCacheRef = useRef(null)
   const overlayClearTimerRef = useRef(null)
+  const successExitTimerRef = useRef(null)
 
   const [scanError, setScanError] = useState('')
   const [phase, setPhase] = useState('scan')
@@ -132,24 +149,10 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
   const canCbc = !!user && hasPermission(user, 'cbc_grading')
 
   useEffect(() => {
-    setFastAction(readInitialFastAction(canAttendance, canFeeLedger))
+    const next = readInitialFastAction(canAttendance, canFeeLedger)
+    setFastAction(next)
+    persistFastAction(next)
   }, [companyId, canAttendance, canFeeLedger])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_FAST_MODE, fastMode ? 'true' : 'false')
-    } catch {
-      /* ignore */
-    }
-  }, [fastMode])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_FAST_ACTION, fastAction)
-    } catch {
-      /* ignore */
-    }
-  }, [fastAction])
 
   useEffect(() => {
     fastModeRef.current = fastMode
@@ -160,11 +163,30 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
 
   const clearOverlaySoon = useCallback((ms) => {
     if (overlayClearTimerRef.current) window.clearTimeout(overlayClearTimerRef.current)
+    if (successExitTimerRef.current) window.clearTimeout(successExitTimerRef.current)
+    successExitTimerRef.current = null
     overlayClearTimerRef.current = window.setTimeout(() => {
       setFastOverlay(null)
       overlayClearTimerRef.current = null
     }, ms)
   }, [])
+
+  const showFastSuccessOverlay = useCallback(
+    (message) => {
+      if (overlayClearTimerRef.current) window.clearTimeout(overlayClearTimerRef.current)
+      if (successExitTimerRef.current) window.clearTimeout(successExitTimerRef.current)
+      setFastOverlay({ type: 'success', message, leaving: false })
+      successExitTimerRef.current = window.setTimeout(() => {
+        setFastOverlay((prev) => (prev && prev.type === 'success' ? { ...prev, leaving: true } : prev))
+        successExitTimerRef.current = null
+      }, 1200)
+      overlayClearTimerRef.current = window.setTimeout(() => {
+        setFastOverlay(null)
+        overlayClearTimerRef.current = null
+      }, 1500)
+    },
+    []
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -179,6 +201,7 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
   useEffect(() => {
     return () => {
       if (overlayClearTimerRef.current) window.clearTimeout(overlayClearTimerRef.current)
+      if (successExitTimerRef.current) window.clearTimeout(successExitTimerRef.current)
     }
   }, [])
 
@@ -208,6 +231,36 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
     }
   }, [])
 
+  const resetFastScanUi = useCallback(() => {
+    if (overlayClearTimerRef.current) window.clearTimeout(overlayClearTimerRef.current)
+    if (successExitTimerRef.current) window.clearTimeout(successExitTimerRef.current)
+    overlayClearTimerRef.current = null
+    successExitTimerRef.current = null
+    lastFastScanRef.current = null
+    setFastOverlay(null)
+    setScanError('')
+  }, [])
+
+  const cleanupAndClose = useCallback(async () => {
+    await stopScanner()
+    processingRef.current = false
+    resetFastScanUi()
+    setStudentRecord(null)
+    setPhase('scan')
+    onClose()
+  }, [onClose, resetFastScanUi, stopScanner])
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        void cleanupAndClose()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [cleanupAndClose])
+
   useEffect(() => {
     if (phase !== 'scan') return undefined
 
@@ -228,30 +281,28 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
 
       const handleFastMarkPresent = async (row) => {
         if (!hasPermission(user, 'school_attendance')) {
-          showFastError('❌ Scan failed: attendance permission required.')
+          showFastError('❌ Scan Failed: attendance permission required.')
           return
         }
         const classLabel = String(row.class_label || '').trim()
         if (!classLabel) {
-          showFastError('❌ Scan failed: student not assigned to a class.')
+          showFastError('❌ Scan Failed: Student unassigned to a class.')
           return
         }
         const today = format(new Date(), 'yyyy-MM-dd')
         try {
-          await attendanceApi.saveAttendanceMarks(companyId, {
+          await attendanceApi.upsertStudentPresentForDate(companyId, {
             date: today,
-            class_id: classLabel,
-            session_type: 'daily',
-            marks: [{ student_id: String(row.$id || row.id), status: 'present' }]
+            classId: classLabel,
+            studentId: String(row.$id || row.id)
           })
         } catch (e) {
-          showFastError(`❌ Scan failed: ${e.message || 'Could not save attendance.'}`)
+          showFastError(`❌ Scan Failed: ${e.message || 'Could not save attendance.'}`)
           return
         }
         playFastSuccessBeep()
         const nm = String(row.legal_name || 'Student').trim()
-        setFastOverlay({ type: 'success', message: `✅ ${nm} marked present` })
-        clearOverlaySoon(1500)
+        showFastSuccessOverlay(`✅ ${nm} marked present`)
       }
 
       const onDecoded = async (decodedText) => {
@@ -260,7 +311,7 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
         const parsed = parseStudentQrPayload(decodedText)
         if (!parsed) {
           if (fastModeRef.current) {
-            showFastError('❌ Scan failed: not a student ID badge.')
+            showFastError('❌ Scan Failed: not a student ID badge.')
           } else {
             toast.error('This QR is not a student ID badge.')
           }
@@ -269,22 +320,21 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
 
         if (fastModeRef.current) {
           const now = Date.now()
-          if (parsed.studentId === lastFastIdRef.current && now - lastFastTimeRef.current < 2000) {
+          if (shouldIgnoreFastScanDuplicate(lastFastScanRef.current, parsed.studentId, now)) {
             return
           }
-          lastFastIdRef.current = parsed.studentId
-          lastFastTimeRef.current = now
+          lastFastScanRef.current = { studentId: parsed.studentId, scannedAtMs: now }
 
           const row = await resolveStudentRow(parsed.studentId)
           if (!row) {
-            showFastError('❌ Scan failed: student not found or inactive.')
+            showFastError('❌ Scan Failed: student not found or inactive.')
             return
           }
 
           const action = fastActionRef.current
           if (action === FAST_ACTION.open_ledger) {
             if (!canFeeLedger) {
-              showFastError('❌ Scan failed: fee ledger access required.')
+              showFastError('❌ Scan Failed: fee ledger access required.')
               return
             }
             processingRef.current = true
@@ -374,14 +424,9 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
     onClose,
     clearOverlaySoon,
     canFeeLedger,
-    user
+    user,
+    showFastSuccessOverlay
   ])
-
-  const cleanupAndClose = useCallback(async () => {
-    await stopScanner()
-    processingRef.current = false
-    onClose()
-  }, [onClose, stopScanner])
 
   const goFeeLedger = async () => {
     if (!studentRecord) return
@@ -412,6 +457,7 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
   }
 
   const handleBackToScan = () => {
+    resetFastScanUi()
     setStudentRecord(null)
     processingRef.current = false
     setPhase('scan')
@@ -436,26 +482,49 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
                 role="switch"
                 aria-checked={fastMode}
                 checked={fastMode}
-                onChange={(e) => setFastMode(e.target.checked)}
+                onChange={(e) => {
+                  const v = e.target.checked
+                  setFastMode(v)
+                  persistFastMode(v)
+                }}
               />
               <span className="student-qr-fast-toggle__slider" aria-hidden />
               <span className="student-qr-fast-toggle__label">⚡ Fast Mode</span>
             </label>
             {fastMode ? (
-              <label className="student-qr-fast-action">
-                <span className="student-qr-fast-action__label">Action on Scan</span>
-                <select
-                  value={fastAction}
-                  onChange={(e) => setFastAction(e.target.value === FAST_ACTION.open_ledger ? FAST_ACTION.open_ledger : FAST_ACTION.mark_present)}
-                >
-                  <option value={FAST_ACTION.mark_present} disabled={!canAttendance}>
+              <div className="student-qr-fast-action" role="group" aria-label="Action on Scan">
+                <span className="student-qr-fast-action__label" id="student-qr-fast-action-label">
+                  Action on Scan
+                </span>
+                <div className="student-qr-fast-action-segments" aria-labelledby="student-qr-fast-action-label">
+                  <button
+                    type="button"
+                    className={`student-qr-fast-action-seg${fastAction === FAST_ACTION.mark_present ? ' student-qr-fast-action-seg--active' : ''}`}
+                    disabled={!canAttendance}
+                    title={!canAttendance ? 'Requires student attendance access' : ''}
+                    onClick={() => {
+                      if (!canAttendance) return
+                      setFastAction(FAST_ACTION.mark_present)
+                      persistFastAction(FAST_ACTION.mark_present)
+                    }}
+                  >
                     Mark Present Today
-                  </option>
-                  <option value={FAST_ACTION.open_ledger} disabled={!canFeeLedger}>
+                  </button>
+                  <button
+                    type="button"
+                    className={`student-qr-fast-action-seg${fastAction === FAST_ACTION.open_ledger ? ' student-qr-fast-action-seg--active' : ''}`}
+                    disabled={!canFeeLedger}
+                    title={!canFeeLedger ? 'Requires fee ledger access' : ''}
+                    onClick={() => {
+                      if (!canFeeLedger) return
+                      setFastAction(FAST_ACTION.open_ledger)
+                      persistFastAction(FAST_ACTION.open_ledger)
+                    }}
+                  >
                     Open Financial Ledger
-                  </option>
-                </select>
-              </label>
+                  </button>
+                </div>
+              </div>
             ) : null}
           </div>
         </header>
@@ -464,9 +533,20 @@ function StudentQrScannerModal({ companyId, onClose, user }) {
           <>
             <div className="student-qr-scanner-view-wrap">
               {fastOverlay ? (
-                <div className={`student-qr-fast-overlay student-qr-fast-overlay--${fastOverlay.type}`} role="status">
-                  {fastOverlay.message}
-                </div>
+                fastOverlay.type === 'error' ? (
+                  <div className="student-qr-fast-banner student-qr-fast-banner--error" role="alert">
+                    {fastOverlay.message}
+                  </div>
+                ) : (
+                  <div
+                    className={`student-qr-fast-toast student-qr-fast-toast--success${
+                      fastOverlay.leaving ? ' student-qr-fast-toast--leaving' : ''
+                    }`}
+                    role="status"
+                  >
+                    {fastOverlay.message}
+                  </div>
+                )
               ) : null}
               <div className="student-qr-scanner-bracket" aria-hidden />
               <div id={SCANNER_REGION_ID} />

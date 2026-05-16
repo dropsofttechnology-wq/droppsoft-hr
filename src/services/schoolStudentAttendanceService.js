@@ -152,3 +152,16 @@ export async function saveAttendanceMarks(companyId, payload) {
   }
   return res.json()
 }
+
+/**
+ * Single-student upsert into `student_daily_attendance` (same handler as bulk save-marks).
+ * Server: PUT `/api/school/attendance/save-marks` (also exposed as PUT `/api/school/attendance/daily`).
+ */
+export async function upsertStudentPresentForDate(companyId, { date, classId, studentId }) {
+  return saveAttendanceMarks(companyId, {
+    date,
+    class_id: classId,
+    session_type: 'daily',
+    marks: [{ student_id: String(studentId), status: 'present' }]
+  })
+}

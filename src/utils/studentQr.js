@@ -1,6 +1,22 @@
 /** Prefix for student roster QR payloads (distinct from staff / pairing codes). */
 export const STUDENT_QR_PREFIX = 'STUDENT:'
 
+/** Cooldown (ms) between accepting the same student ID in Fast Mode (avoids double triggers). */
+export const STUDENT_QR_FAST_SCAN_COOLDOWN_MS = 2500
+
+/**
+ * @param {{ studentId: string, scannedAtMs: number } | null | undefined} last
+ * @param {string} studentId
+ * @param {number} [nowMs]
+ * @returns {boolean} true if this scan should be ignored (duplicate within cooldown)
+ */
+export function shouldIgnoreFastScanDuplicate(last, studentId, nowMs = Date.now()) {
+  const id = String(studentId || '').trim()
+  if (!id || !last?.studentId) return false
+  if (String(last.studentId) !== id) return false
+  return nowMs - Number(last.scannedAtMs || 0) < STUDENT_QR_FAST_SCAN_COOLDOWN_MS
+}
+
 /**
  * @param {string} studentId
  * @returns {string}
