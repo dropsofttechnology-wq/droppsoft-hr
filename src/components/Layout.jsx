@@ -4,9 +4,11 @@ import { useAuth } from '../contexts/AuthContext'
 import { useCompany } from '../contexts/CompanyContext'
 import { usePWAInstall } from '../hooks/usePWAInstall'
 import { isLocalDataSource } from '../config/dataSource'
+import { DATABASE_ID } from '../config/appwrite'
 import { hasPermission } from '../utils/permissions'
 import { getApiBaseUrl } from '../config/api'
 import { useAutoLogout } from '../hooks/useAutoLogout'
+import { StudentQrScanToolbarButton } from './school/StudentQrScanner'
 import './Layout.css'
 
 /** Non-interactive sidebar group label */
@@ -45,8 +47,11 @@ const Layout = () => {
   const isSuperAdmin = role === 'super_admin'
   const isCapacitor = import.meta.env.VITE_CAPACITOR === 'true'
   const showOperationalExpenses =
-    isLocalDataSource() &&
+    (isLocalDataSource() || !!DATABASE_ID) &&
     (hasPermission(user, 'operational_expenses') || hasPermission(user, 'operational_expenses_approval'))
+  const showFeeLedger = isLocalDataSource() && hasPermission(user, 'fee_ledger')
+  const showStudentAttendance = isLocalDataSource() && hasPermission(user, 'school_attendance')
+  const showCbcGrading = isLocalDataSource() && hasPermission(user, 'cbc_grading')
 
   useEffect(() => {
     if (!isCapacitor) return
@@ -479,6 +484,36 @@ const Layout = () => {
                   </Link>
                 </li>
               )}
+              {showFeeLedger && (
+                <li>
+                  <Link
+                    to="/school/fee-ledger?tab=summary"
+                    className={isActive('/school/fee-ledger') ? 'active' : ''}
+                  >
+                    Fee ledger
+                  </Link>
+                </li>
+              )}
+              {showStudentAttendance && (
+                <li>
+                  <Link
+                    to="/school/student-attendance"
+                    className={isActive('/school/student-attendance') ? 'active' : ''}
+                  >
+                    Student attendance
+                  </Link>
+                </li>
+              )}
+              {showCbcGrading && (
+                <li>
+                  <Link
+                    to="/school/cbc-grading"
+                    className={isActive('/school/cbc-grading') ? 'active' : ''}
+                  >
+                    CBC grading
+                  </Link>
+                </li>
+              )}
             </>
           )}
 
@@ -566,6 +601,11 @@ const Layout = () => {
       </nav>
 
       <main className={`main-content ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+        {isLocalDataSource() && (showFeeLedger || showStudentAttendance) ? (
+          <div className="school-module-toolbar">
+            <StudentQrScanToolbarButton />
+          </div>
+        ) : null}
         <Outlet />
       </main>
     </div>
