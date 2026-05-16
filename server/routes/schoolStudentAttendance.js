@@ -372,6 +372,9 @@ export function createSchoolStudentAttendanceRoutes(db) {
     })
 
     res.json({ ok: true, ...result })
+    } catch (e) {
+      res.status(500).json({ error: e.message })
+    }
   }
 
   r.get('/attendance/daily', can, (req, res) => {

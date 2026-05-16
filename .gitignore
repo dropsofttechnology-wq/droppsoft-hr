@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 release/
+release-build/
 release-*/
 .asar_check/
 .asar_tmp/

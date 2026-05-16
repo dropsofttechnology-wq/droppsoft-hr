@@ -1,7 +1,7 @@
 {
   "name": "droppsoft-hr",
   "version": "1.0.9",
-  "description": "HR & Payroll Management System with Face Recognition",
+  "description": "DROPSOFT SCH ERP — school fees, attendance, CBC, and HR payroll",
   "author": "Dropsoft",
   "type": "module",
   "main": "electron/main.cjs",
@@ -87,7 +87,7 @@
   },
   "build": {
     "appId": "com.dropsoft.hr",
-    "productName": "Dropsoft HR",
+    "productName": "DROPSOFT SCH erp",
     "copyright": "Copyright © Dropsoft",
     "directories": {
       "output": "release"

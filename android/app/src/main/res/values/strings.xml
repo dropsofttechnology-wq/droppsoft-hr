@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Dropsoft HR</string>
-    <string name="title_activity_main">Dropsoft HR</string>
+    <string name="app_name">DROPSOFT SCH erp</string>
+    <string name="title_activity_main">DROPSOFT SCH erp</string>
     <string name="package_name">com.dropsoft.hr</string>
     <string name="custom_url_scheme">com.dropsoft.hr</string>
 </resources>

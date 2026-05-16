@@ -25,7 +25,7 @@ function getDataDir() {
 /**
  * Central HR server URL for thin-client Electron (no local SQLite/API on this PC).
  * Priority: HR_REMOTE_API_URL env → %AppData%\\DropsoftHR\\remote-api.json
- * One-time file setup: run "Dropsoft HR.exe" --set-server
+ * One-time file setup: run "DROPSOFT SCH erp.exe" --set-server
  */
 function normalizeApiOrigin(raw) {
   if (raw == null || !String(raw).trim()) return null
@@ -99,7 +99,7 @@ function ensureWindowsFirewallRule(port) {
   if (process.platform !== 'win32') return
   const p = Number(port)
   if (!Number.isFinite(p) || p <= 0 || p >= 65536) return
-  const ruleName = 'Dropsoft HR API'
+  const ruleName = 'DROPSOFT SCH erp API'
   execFile(
     'netsh',
     [
@@ -177,7 +177,7 @@ async function applyRoleSetup(payload) {
         error:
           'Cannot reach the server at ' +
           origin +
-          '.\n\nCheck the IP and port, that the server PC is running Dropsoft HR, and Windows Firewall allows that port.'
+          '.\n\nCheck the IP and port, that the server PC is running DROPSOFT SCH erp, and Windows Firewall allows that port.'
       }
     }
   }
@@ -246,7 +246,7 @@ async function tryConsumeInstallPending() {
     try {
       dialog.showMessageBoxSync({
         type: 'warning',
-        title: 'Dropsoft HR — setup',
+        title: 'DROPSOFT SCH erp — setup',
         message: 'Could not finish setup from the installer.',
         detail: String(result.error),
         buttons: ['OK']
@@ -277,7 +277,7 @@ function openRoleSetupWindow() {
       minHeight: 480,
       resizable: true,
       autoHideMenuBar: true,
-      title: 'Dropsoft HR — Setup',
+      title: 'DROPSOFT SCH erp — Setup',
       icon: fs.existsSync(icon) ? icon : undefined,
       webPreferences: {
         preload: path.join(__dirname, 'setup-role-preload.cjs'),
@@ -346,9 +346,9 @@ function applyPendingRestoreIfAny() {
     fs.rmSync(tempDir, { recursive: true, force: true })
     fs.unlinkSync(zipPath)
     fs.unlinkSync(flagPath)
-    console.log('[Dropsoft HR] Restored database from uploaded backup.')
+    console.log('[DROPSOFT SCH erp] Restored database from uploaded backup.')
   } catch (e) {
-    console.error('[Dropsoft HR] Pending restore failed:', e)
+    console.error('[DROPSOFT SCH erp] Pending restore failed:', e)
     try {
       fs.unlinkSync(flagPath)
     } catch (_) {}
@@ -521,7 +521,7 @@ ipcMain.handle('save-remote-api-json', async (_event, urlString) => {
     return {
       ok: false,
       error:
-        `Cannot reach ${origin}.\n\nCheck the server IP and port, that Dropsoft HR is running on the server PC, and Windows Firewall allows that port.`
+        `Cannot reach ${origin}.\n\nCheck the server IP and port, that DROPSOFT SCH erp is running on the server PC, and Windows Firewall allows that port.`
     }
   }
   try {
@@ -547,7 +547,7 @@ ipcMain.handle('test-remote-api', async (_event, urlString) => {
     return {
       ok: false,
       error:
-        `Cannot reach ${origin}.\n\nCheck the server IP and port, that Dropsoft HR is running on the server PC, and Windows Firewall allows that port.`
+        `Cannot reach ${origin}.\n\nCheck the server IP and port, that DROPSOFT SCH erp is running on the server PC, and Windows Firewall allows that port.`
     }
   }
   return { ok: true, baseUrl: origin }
@@ -584,10 +584,10 @@ function setServeDistEnv() {
       return
     }
   }
-  console.warn('[Dropsoft HR] dist/index.html not found — UI may not load over http (candidates tried:', candidates.join('; '), ')')
+  console.warn('[DROPSOFT SCH erp] dist/index.html not found — UI may not load over http (candidates tried:', candidates.join('; '), ')')
 }
 
-/** Launch Dropsoft HR when the user signs in to Windows (packaged app only). */
+/** Launch DROPSOFT SCH erp when the user signs in to Windows (packaged app only). */
 function applyLoginStartupSettings() {
   if (!app.isPackaged) return
   if (process.env.ELECTRON_DISABLE_STARTUP === '1') return
@@ -660,10 +660,10 @@ if (!gotSingleInstanceLock) {
           try {
             dialog.showMessageBoxSync({
               type: 'warning',
-              title: 'Dropsoft HR — server not reachable',
-              message: `Cannot reach Dropsoft HR server at ${remoteApiBase}.`,
+              title: 'DROPSOFT SCH erp — server not reachable',
+              message: `Cannot reach DROPSOFT SCH erp server at ${remoteApiBase}.`,
               detail:
-                'Check that the server PC is running Dropsoft HR, and Windows Firewall allows the API port.\n\n' +
+                'Check that the server PC is running DROPSOFT SCH erp, and Windows Firewall allows the API port.\n\n' +
                 'The connection setup window will now open so you can confirm or change the server URL.\n\n' +
                 `Config file: ${cfg}`,
               buttons: ['OK']
@@ -688,7 +688,7 @@ if (!gotSingleInstanceLock) {
         if (!healthy) {
           throw new Error(
             'The HR API did not respond on http://127.0.0.1 — try again, or reinstall. ' +
-              'If another Dropsoft HR window is open, close it first.'
+              'If another DROPSOFT SCH erp window is open, close it first.'
           )
         }
       }
@@ -710,10 +710,10 @@ if (!gotSingleInstanceLock) {
       mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
         if (!isMainFrame) return
         const msg = `[${errorCode}] ${errorDescription}\n${validatedURL || ''}`
-        console.error('[Dropsoft HR] Window failed to load:', msg)
+        console.error('[DROPSOFT SCH erp] Window failed to load:', msg)
         try {
           dialog.showErrorBox(
-            'Dropsoft HR — page did not load',
+            'DROPSOFT SCH erp — page did not load',
             `${msg}\n\nIf this persists, reinstall the app or run from the project folder with npm run electron after npm run build.`
           )
         } catch (_) {
@@ -739,7 +739,7 @@ if (!gotSingleInstanceLock) {
           try {
             dialog.showMessageBoxSync({
               type: 'warning',
-              title: 'Dropsoft HR — client connection',
+              title: 'DROPSOFT SCH erp — client connection',
               message: `Could not open server page at ${base}.`,
               detail:
                 `${detail}\n\nThe client setup wizard will open so you can set the correct server URL.`,
@@ -764,9 +764,9 @@ if (!gotSingleInstanceLock) {
     })
     .catch((err) => {
       const msg = err && (err.stack || err.message) ? String(err.stack || err.message) : String(err)
-      console.error('[Dropsoft HR] Startup failed:', msg)
+      console.error('[DROPSOFT SCH erp] Startup failed:', msg)
       try {
-        dialog.showErrorBox('Dropsoft HR — could not start', msg)
+        dialog.showErrorBox('DROPSOFT SCH erp — could not start', msg)
       } catch (_) {
         /* ignore */
       }

@@ -259,7 +259,7 @@ const Layout = () => {
           <div className="logo-container">
             <img 
               src="/logo.png" 
-              alt="Dropsoft HR Logo" 
+              alt="DROPSOFT SCH erp Logo" 
               className="app-logo" 
               onError={(e) => { 
                 e.target.style.display = 'none';
@@ -267,7 +267,7 @@ const Layout = () => {
                 if (title) title.style.display = 'block';
               }} 
             />
-            <h1 className="app-title">Dropsoft HR</h1>
+            <h1 className="app-title">DROPSOFT SCH erp</h1>
           </div>
           {currentCompany && (
             <div className="company-badge">

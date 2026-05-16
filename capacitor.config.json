@@ -1,6 +1,6 @@
 {
   "appId": "com.dropsoft.hr",
-  "appName": "Dropsoft HR",
+  "appName": "DROPSOFT SCH erp",
   "webDir": "dist",
   "android": {
     "allowMixedContent": true
